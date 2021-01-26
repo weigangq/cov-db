@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+from config import config
 import re
 import numpy as np
 import psycopg2
@@ -32,7 +33,9 @@ refEPI = 'EPI_ISL_406030'
 batEPI = 'EPI_ISL_402131'
 logging.info("Start timestamp: %s", datetime.datetime.now())
 
-conn = psycopg2.connect("host=borreliabase.org dbname=bb3-dev user=lab password=homology")
+# From https://www.postgresqltutorial.com/postgresql-python/connect/
+dbParams = config()
+conn = psycopg2.connect(**dbParams)
 cur = conn.cursor()
 
 ############################################

@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+from config import config
 import re
 import psycopg2
 import argparse
-#import datetime
+import datetime
 import sys
+
 
 if len(sys.argv) != 2:
     print("Usage: snp-freq.py country_name", file == sys.stderr)
@@ -15,7 +17,9 @@ freqCut = 0.001
 refEPI = 'EPI_ISL_406030'
 batEPI = 'EPI_ISL_402131'
 
-conn = psycopg2.connect("host=borreliabase.org dbname=bb3-dev user=lab password=homology")
+# From https://www.postgresqltutorial.com/postgresql-python/connect/
+dbParams = config()
+conn = psycopg2.connect(**dbParams)
 cur = conn.cursor()
 
 ############################################
