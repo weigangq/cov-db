@@ -156,33 +156,37 @@ par_acc = {'l': tup_acc}
 cur.execute('select acc, chg from acc_hap a, hap_chg b where a.hid = b.hid and acc in %(l)s', par_acc)
 hap = cur.fetchall()
 genoSample = {} 
+# initialize double dict !!!!!!!
+for acc in isoEPIs:
+    genoSample[acc] = {}
+
 for line in hap:
     acc = line[0]
     change = line[1]
     varID = "cv-" + change
     if varID not in seenID:
         continue
-    genoSample[acc] = {}
-    if re.match("[ATCG]\d+", change): # a SNP, with id "cv1234"
+    if re.match("[ATCG]\d+", change): # a SNP, with id "T1234"
         site = int(change[1:])
         alt = change[0]
         genoSample[acc][site] = alt
-    elif re.search("\d+-\d+", change): # a deletion at n-1, with id "cv123-45"
+# note mixed keys for genoSample: str for indels (to avoid conflict)
+    elif re.search("\d+-\d+", change): # a deletion at n-1, with id "123-45"
         x = change.split("-")
         site = int(x[0]) - 1
-        genoSample[acc][site] = indelInfo[varID]['altNT'][0] # 'N'
+        genoSample[acc][varID] = indelInfo[varID]['altNT'][0] # 'N'
     else:  # insertion, e.g., "234_ATG"
         x = change.split("_")
         site = int(x[0]) - 1
-        genoSample[acc][site] = indelInfo[varID]['altNT'][0] # 'NAAAA'
+        genoSample[acc][varID] = indelInfo[varID]['altNT'][0] # 'NAAAA'
 #    logging.info("Genotypes collected for sample %s at site %s with %s is %s", acc, site, varID, genoSample[acc][site])
 logging.info("genotypes collected for : n = %s isolates, at %s", len(list(genoSample.keys())), datetime.datetime.now())
 filteredEPIs = list(genoSample.keys())
 filteredEPIs.sort() # filter out EPIs contains only low-freq variants
-for acc in filteredEPIs:
-    x = genoSample[acc]
-    print(acc, x)
- sys.exit()
+#for acc in ['ISL_700228', 'ISL_539719', 'ISL_539706', 'ISL_539708']:
+#    x = genoSample[acc]
+#    print(acc, x)
+#sys.exit()
 #####################
 # construct VCF records
 #############################
@@ -203,8 +207,6 @@ header = vcfpy.Header(
 
 with vcfpy.Writer.from_path(args.vcf, header) as writer:
     for site in snpDict:
-        if site != 29:
-            continue
         geno = {}
         genoCalls = []
         refNT = snpInfo[site]['refNT'] 
@@ -220,10 +222,10 @@ with vcfpy.Writer.from_path(args.vcf, header) as writer:
         for acc in filteredEPIs:
             allele = 0
             if site in genoSample[acc]: # is mutated
-                print(genoSample[acc][site])
+ #               print(genoSample[acc][site])
                 if genoSample[acc][site] in geno: # alt is valid
                     allele = geno[genoSample[acc][site]]
-                    logging.info("alt assigned for %s at %s: %s", acc, site, allele)
+#                    logging.info("alt assigned for %s at %s: %s", acc, site, allele)
                 else: # alt is singleton/discarded
                     logging.warning("alt is singleton for %s at %s: assign ref allele", acc, site)
 #            else:
@@ -252,7 +254,7 @@ with vcfpy.Writer.from_path(args.vcf, header) as writer:
         writer.write_record(record)
     logging.info("SNPs records written to file: n = %s at %s", len(sitesSNPs), datetime.datetime.now())
         
-    for change in indelDict:
+    for change in indelDict: # change is "cv-" varID
         geno = {}
         genoCalls = []
         refNT = indelInfo[change]['refNT'] # 'NAAAAA'
@@ -268,9 +270,9 @@ with vcfpy.Writer.from_path(args.vcf, header) as writer:
 
         for acc in filteredEPIs:
             allele = 0
-            if site in genoSample[acc]: # is mutated
-                if genoSample[acc][site] in geno: # alt is valid
-                    allele = geno[genoSample[acc][site]]
+            if change in genoSample[acc]: # is mutated
+                if genoSample[acc][change] in geno: # alt is valid
+                    allele = geno[genoSample[acc][change]]
                 else: # alt is singleton/discarded
                     logging.warning("alt is singleton for %s at %s: assign ref allele", acc, site)
 
