@@ -59,151 +59,74 @@ logging.info("Isolates collected and sorted: n = %s", len(isoEPIs))
 ########################################################
 varFile = open(args.var, "r")
 snpInfo = {}
-delInfo = {}
-insInfo = {}
+indelInfo = {}
 lines = varFile.readlines()
-changes = {} # only the high frequency vars
 varCt = 0
 multCt = 0
 snpCt = 0
-snpList = []
-delList = []
-insList = []
+delCt = 0
+insCt = 0
+seenID = {}
 for line in lines:
     varCt += 1
     data = line.split()
-    site = int(data[0])
-    change = data[1]
-    changes[change] = 1
-#    print(change, end = '\t')
-    if re.match("[ATCG]\d+", change): # a SNP, combine multi-allelic
-        snpList.append(change)
-    elif re.search("\d+-\d+", change): # deletion, e.g., "4560-45"
-        delList.append(change)
-    else:
-        insList.append(change)
-logging.info("Variants read: n = %s", varCt)
-
-# collect SNPs        
-par_snp = { 'l': tuple(snpList) }  
-cur.execute("select * from cv_snp where concat(alt, site) in %(l)s", par_snp) # PK: site + alt
-snp = cur.fetchall()
-#if len(snp) == 0:
-for dataSNP in snp:
-    site = dataSNP[0]
-    change = dataSNP[1] + str(dataSNP[0])
-    snpCt += 1
-    isCoding = 0 if dataSNP[3] is None else 1
-    conseq = ''
-    if isCoding:
-        if dataSNP[4] == dataSNP[5]:
-            conseq = 'synonymous'
+    site = int(data[1])
+    varType = data[0]
+    varID = data[2]
+    seenID[varID] = 1
+    if varType == 'SNP':
+        snpCt += 1
+        isCoding = 0 if data[9] == 'noncoding'  else 1
+        if site in snpInfo:
+            snpInfo[site]['varID'].append(varID)
+            snpInfo[site]['altNT'].append(data[3])
+            snpInfo[site]['conseq'].append(data[9])
+            multCt += 1
         else:
-            conseq = 'missense'
-    else:
-        conseq = 'noncoding'
-            
-    if site in snpInfo:
-        snpInfo[site]['varID'].append("cv" + "-" + change)
-        snpInfo[site]['altNT'].append(dataSNP[1])
-        snpInfo[site]['conseq'].append(conseq)
-        multCt += 1
-    else:
-        snpInfo[site] = {
+            snpInfo[site] = {
+                'site': site,
+                'varID': [varID],
+                'varType': varType,
+                'altNT': [data[3]], # could be multiple altNTs
+                'refNT': data[8], 
+                'locus': data[4],
+                'codonRef': data[5] if isCoding else 'NA',
+                'codonPos': str(data[6]) if isCoding else 'NA',
+                'locPos': str(data[7]) if isCoding else 'NA',
+                'conseq': [ data[9] ]
+            }
+
+    else: # indel
+        if varType == 'DEL':
+            delCt += 1
+        else:
+            insCt += 1
+
+        indelInfo[varID] = {
             'site': site,
-            'varID': ["cv" + "-" + change],
-            'vartype': 'SNP',
-            'altNT': [dataSNP[1]], # could be multiple altNTs
-            'refNT': dataSNP[2][dataSNP[3]-1] if isCoding else dataSNP[2], 
-            'locus': dataSNP[6],
-            'codonRef': dataSNP[2] if isCoding else 'NA',
-            'codonPos': str(dataSNP[3]) if isCoding else 'NA',
-            'locPos': str(dataSNP[7]) if isCoding else 'NA',
-            'conseq': [ conseq ]
+            'varType': varType,
+            'varID': [varID],
+            'altNT': [data[3]], 
+            'refNT': data[8], 
+            'locus': data[4],
+            'codonRef': 'NA',
+            'codonPos': 'NA',
+            'locPos': str(data[7]),
+            'conseq': [ 'NA' ]
         }
 
+logging.info("Variants read: n = %s", varCt)    
 logging.info("Number of SNPs: n = %s", snpCt)
 logging.info("Number of multi-state SNPs: n = %s", multCt)
 
-# deletion
-delCt = 0
-par_del = { 'l': tuple(delList) }
- #   elif re.search("\d+-\d+", change): # deletion, e.g., "4560-45"
- #       print("Not matching")
-cur.execute("select * from cv_del where del in %(l)s", par_del) 
-DEL = cur.fetchall()
-for dataDEL in DEL:
-    delCt += 1
-    change = dataDEL[0]
-    site = int(change.split("-")[0])
-    delInfo[change] = {
-        'site': site - 1,
-        'vartype': 'DEL',
-        'varID': ["cv" + "-" + change],
-        'altNT': ['N'], # A 
-        'refNT': 'N' + dataDEL[3], # ATTTTTTTTTTTTTTTTT
-        'locus': dataDEL[1],
-        'codonRef': 'NA',
-        'codonPos': 'NA',
-        'locPos': str(dataDEL[2]),
-        'conseq': [ 'NA' ]
-    }
-
-insCt = 0    
-par_ins = { 'l': tuple(insList) } 
-cur.execute("select * from cv_ins where ins in %(l)s", par_ins) 
-INS = cur.fetchall()
-for dataINS in INS:
-    insCt += 1
-    ins = dataINS[0].split("_")
-    site = int(ins[0])
-    alt = ins[1]
-    change = dataINS[0]
-    refBase = dataINS[4][dataINS[3]-1] if dataINS[3] else dataINSp[4]
-    insInfo[change] = {
-        'site': site - 1,
-        'vartype': 'INS',
-        'varID': ["cv" + "-" + change],
-        'altNT': [refBase + alt], 
-        'refNT': refBase, 
-        'locus': dataINS[1],
-        'codonRef': 'NA',
-        'codonPos': 'NA',
-        'locPos': str(dataINS[2]),
-        'conseq': [ 'NA' ]
-    }
-    
 sitesSNPs = list(snpInfo.keys())
-#sitesSNPs.sort()
-sitesDELs = list(delInfo.keys())
-sitesINSs = list(insInfo.keys())
-#sitesDELs.sort()
-#print(delInfo)
-
-#print(snpInfo)
-# sort by site (for printing)
+sitesINDELs = list(indelInfo.keys())
 snpDict = dict(sorted(snpInfo.items(), key=lambda item: item[1]['site']))
-delDict = dict(sorted(delInfo.items(), key=lambda item: item[1]['site']))
-insDict = dict(sorted(insInfo.items(), key=lambda item: item[1]['site']))
-#print(snpDict)
-#sys.exit()
+indelDict = dict(sorted(indelInfo.items(), key=lambda item: item[1]['site']))
 
-varOut = open("var.tsv", "w")
-for site in snpInfo.keys(): # int key
-    varOut.write(snpInfo[site]['vartype'] + "\t"+ str(snpInfo[site]['site']) + "\t" + ",".join(snpInfo[site]['varID']) + "\t" + snpInfo[site]['refNT'] + "\t" + snpInfo[site]['locus'] + "\t" + snpInfo[site]['codonRef'] + "\t" + snpInfo[site]['codonPos'] + "\t" + snpInfo[site]['locPos'] + "\t" + ",".join(snpInfo[site]['altNT']) + "\t" + ",".join(snpInfo[site]['conseq']) + "\n")
-
-for site in delInfo.keys(): # str key!!
-    varOut.write(delInfo[site]['vartype'] + "\t"+ str(delInfo[site]['site']) + "\t" + ",".join(delInfo[site]['varID']) + "\t" + delInfo[site]['refNT'] + "\t" + delInfo[site]['locus'] + "\t" + delInfo[site]['codonRef'] + "\t" + delInfo[site]['codonPos'] + "\t" + delInfo[site]['locPos'] + "\t" + ",".join(delInfo[site]['altNT']) + "\t" + ",".join(delInfo[site]['conseq']) + "\n")
-
-for site in insInfo.keys(): # str key!!
-    varOut.write(insInfo[site]['vartype'] + "\t"+ str(insInfo[site]['site']) + "\t" + ",".join(insInfo[site]['varID']) + "\t" + insInfo[site]['refNT'] + "\t" + insInfo[site]['locus'] + "\t" + insInfo[site]['codonRef'] + "\t" + insInfo[site]['codonPos'] + "\t" + insInfo[site]['locPos'] + "\t" + ",".join(insInfo[site]['altNT']) + "\t" + ",".join(insInfo[site]['conseq']) + "\n")
-   
-varOut.close()
 varFile.close()
-logging.info("high freq SNP info collected and sorted: n = %s", len(sitesSNPs))
-logging.info("high freq DEL info collected and sorted: n = %s", len(sitesDELs))
-logging.info("high freq INS info collected and sorted: n = %s", len(sitesINSs))
-logging.info("Var file created: var.tsv, at %s", datetime.datetime.now())
+logging.info("high freq SNPs info collected and sorted: n = %s", len(sitesSNPs))
+logging.info("high freq INDELs info collected and sorted: n = %s", len(sitesINDELs))
 logging.info("change not found in database: n = %s",  varCt - snpCt - delCt - insCt)
 
 #sys.exit()
@@ -215,8 +138,6 @@ sampleCt = 1
 
 tup_acc = tuple(isoEPIs)
 par_acc = {'l': tup_acc}
-#tup_chg = tuple(changes)
-#par_chg = {'m': tup_chg}
 cur.execute('select acc, chg from acc_hap a, hap_chg b where a.hid = b.hid and acc in %(l)s', par_acc)
 hap = cur.fetchall()
 
@@ -224,7 +145,8 @@ genoSample = {}
 for line in hap:
     acc = line[0]
     change = line[1]
-    if change not in changes: # didn't make it freq >= 0.1% cutoff
+    varID = "cv-" + change
+    if varID not in seenID:
         continue
     genoSample[acc] = {}
     if re.match("[ATCG]\d+", change): # a SNP, with id "cv1234"
@@ -233,12 +155,12 @@ for line in hap:
         genoSample[acc][site] = alt
     elif re.search("\d+-\d+", change): # a deletion at n-1, with id "cv123-45"
         x = change.split("-")
-        site = int(x[0])
-        genoSample[acc][site] = delInfo[change]['altNT'][0] # 'N'
+        site = int(x[0]) - 1
+        genoSample[acc][site] = indelInfo[varID]['altNT'][0] # 'N'
     else:  # insertion, e.g., "234_ATG"
         x = change.split("_")
-        site = int(x[0])
-        genoSample[acc][site] = insInfo[change]['altNT'][0] # 'NAAAA'
+        site = int(x[0]) - 1
+        genoSample[acc][site] = indelInfo[varID]['altNT'][0] # 'NAAAA'
 #    logging.info("Genotypes collected for sample %s at %s", acc, sampleCt)
 #    sampleCt += 1
 #print(genoSample)
@@ -311,18 +233,19 @@ with vcfpy.Writer.from_path(args.vcf, header) as writer:
         writer.write_record(record)
     logging.info("SNPs records written to file: n = %s at %s", len(sitesSNPs), datetime.datetime.now())
         
-    for change in delDict:
+    for change in indelDict:
         geno = {}
         genoCalls = []
-        refNT = delInfo[change]['refNT'] # 'NAAAAA'
-        altNTs = delInfo[change]['altNT'] # [ 'N' ]
+        refNT = indelInfo[change]['refNT'] # 'NAAAAA'
+        altNTs = indelInfo[change]['altNT'] # [ 'N' ]
         subs = [] # substitutions
         geno[refNT] = 0
         altCount = 1
+        varType = indelInfo[change]['varType']
         for alt in altNTs:
             geno[alt] = altCount
             altCount += 1
-            subs.append(vcfpy.Substitution(type_ = 'DEL', value = alt))
+            subs.append(vcfpy.Substitution(type_ = varType, value = alt))
 
         for acc in filteredEPIs:
             allele = 0
@@ -335,15 +258,15 @@ with vcfpy.Writer.from_path(args.vcf, header) as writer:
             sampleCall = vcfpy.Call(
                 sample = acc,
                 data = {'GT': str(allele)}, # has to be string
-                site = site - 1
+                site = site 
             )
             genoCalls.append(sampleCall)
             
         record = vcfpy.Record(
             CHROM = refEPI, 
-            POS = delInfo[change]['site'], 
-            ID = delInfo[change]['varID'], 
-            REF = delInfo[change]['refNT'], 
+            POS = indelInfo[change]['site'], 
+            ID = indelInfo[change]['varID'], 
+            REF = indelInfo[change]['refNT'], 
             ALT = subs,
             QUAL = None, 
             FILTER = [], # PASS
@@ -353,51 +276,7 @@ with vcfpy.Writer.from_path(args.vcf, header) as writer:
         )
         varCt += 1
         writer.write_record(record)
-    logging.info("DELs records written to file: n = %s at %s", len(sitesDELs), datetime.datetime.now())
-    
-    for change in insDict:
-        geno = {}
-        genoCalls = []
-        refNT = insInfo[change]['refNT'] # 'A'
-        altNTs = insInfo[change]['altNT'] # [ 'AG' ]
-        subs = [] # substitutions
-        geno[refNT] = 0
-        altCount = 1
-        for alt in altNTs:
-            geno[alt] = altCount
-            altCount += 1
-            subs.append(vcfpy.Substitution(type_ = 'INS', value = alt))
-
-        for acc in filteredEPIs:
-            allele = 0
-            if site in genoSample[acc]: # is mutated
-                if genoSample[acc][site] in geno: # alt is valid
-                    allele = geno[genoSample[acc][site]]
-                else: # alt is singleton/discarded
-                    logging.warning("alt is singleton for %s at %s: assign ref allele", acc, site)
-
-            sampleCall = vcfpy.Call(
-                sample = acc,
-                data = {'GT': str(allele)}, # has to be string
-                site = site - 1
-            )
-            genoCalls.append(sampleCall)
-            
-        record = vcfpy.Record(
-            CHROM = refEPI, 
-            POS = insInfo[change]['site'], 
-            ID = insInfo[change]['varID'], 
-            REF = insInfo[change]['refNT'], 
-            ALT = subs,
-            QUAL = None, 
-            FILTER = [], # PASS
-            INFO = {},  # consequence calls, locus, etc; a dict
-            FORMAT = ['GT'], # a list
-            calls = genoCalls
-        )
-        varCt += 1
-        writer.write_record(record)
-    logging.info("INSs records written to file: n = %s at %s", len(sitesINSs), datetime.datetime.now())       
+    logging.info("INDELs records written to file: n = %s at %s", len(sitesINDELs), datetime.datetime.now())
  
 logging.info("End timestamp: %s", datetime.datetime.now())
 sys.exit();
