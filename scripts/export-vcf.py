@@ -13,7 +13,7 @@ import vcfpy
 
 # Initialize parser
 parser = argparse.ArgumentParser(
-    description='Export isolate IDs from database')
+    description='Export VCF file from two inputs (iso & var) from the export-maf.py')
 
 # Add arguments
 parser.add_argument('-i', '--iso', required = True,
@@ -22,12 +22,20 @@ parser.add_argument('-i', '--iso', required = True,
 parser.add_argument('-v', '--var', required = True,
                     help = 'provide variant list in a file')
 
-parser.add_argument('-o', '--vcf', required = True,
-                    help = 'Name of vcf output file')
+parser.add_argument('-a', '--syn', action = 'store_true',
+                    help = 'synonymous SNPs only')
+
+parser.add_argument('-b', '--nonsyn', action = 'store_true',
+                    help = 'Nonsynonymous SNPs only')
+
+parser.add_argument('-s', '--snp', action = 'store_true',
+                    help = 'SNPs only')
+
+parser.add_argument('-o', '--vcf', default = 'cov.vcf',
+                    help = 'Name of vcf output file (default: cov.vcf)')
 
 args = parser.parse_args()
 
-#logging.basicConfig(filename = 'export-vcf.log', filemode = 'w', level = logging.DEBUG)
 logging.basicConfig(level = logging.DEBUG)
 refEPI = 'EPI_ISL_406030'
 batEPI = 'EPI_ISL_402131'
@@ -50,8 +58,6 @@ for line in lines:
 isoEPIs.sort()
 isoFile.close()
 logging.info("Isolates collected and sorted: n = %s", len(isoEPIs))
-#print(isoEPIs[:9])
-#sys.exit()
 
 
 #######################################################
@@ -72,14 +78,24 @@ for line in lines:
     data = line.split()
     site = int(data[1])
     varType = data[0]
-    varID = data[2]
+    varID = data[2] # e.g., cv-T29
+
+    if args.snp and varType != 'SNP':
+        continue
+
+    if args.syn and data[9] != 'synonymous':
+        continue
+
+    if args.nonsyn and data[9] != 'missense':
+        continue
+
     seenID[varID] = 1
     if varType == 'SNP':
         snpCt += 1
         isCoding = 0 if data[9] == 'noncoding'  else 1
         if site in snpInfo:
             snpInfo[site]['varID'].append(varID)
-            snpInfo[site]['altNT'].append(data[3])
+            snpInfo[site]['altNT'].append(data[8])
             snpInfo[site]['conseq'].append(data[9])
             multCt += 1
         else:
@@ -87,8 +103,8 @@ for line in lines:
                 'site': site,
                 'varID': [varID],
                 'varType': varType,
-                'altNT': [data[3]], # could be multiple altNTs
-                'refNT': data[8], 
+                'altNT': [data[8]], # could be multiple altNTs
+                'refNT': data[3], 
                 'locus': data[4],
                 'codonRef': data[5] if isCoding else 'NA',
                 'codonPos': str(data[6]) if isCoding else 'NA',
@@ -106,14 +122,15 @@ for line in lines:
             'site': site,
             'varType': varType,
             'varID': [varID],
-            'altNT': [data[3]], 
-            'refNT': data[8], 
+            'altNT': [data[8]], 
+            'refNT': data[3], 
             'locus': data[4],
             'codonRef': 'NA',
             'codonPos': 'NA',
             'locPos': str(data[7]),
             'conseq': [ 'NA' ]
         }
+varFile.close()
 
 logging.info("Variants read: n = %s", varCt)    
 logging.info("Number of SNPs: n = %s", snpCt)
@@ -124,12 +141,10 @@ sitesINDELs = list(indelInfo.keys())
 snpDict = dict(sorted(snpInfo.items(), key=lambda item: item[1]['site']))
 indelDict = dict(sorted(indelInfo.items(), key=lambda item: item[1]['site']))
 
-varFile.close()
 logging.info("high freq SNPs info collected and sorted: n = %s", len(sitesSNPs))
 logging.info("high freq INDELs info collected and sorted: n = %s", len(sitesINDELs))
-logging.info("change not found in database: n = %s",  varCt - snpCt - delCt - insCt)
+logging.info("changed skipped: n = %s",  varCt - snpCt - delCt - insCt)
 
-#sys.exit()
 ##############################
 # get genotype for samples
 ###############################
@@ -140,7 +155,6 @@ tup_acc = tuple(isoEPIs)
 par_acc = {'l': tup_acc}
 cur.execute('select acc, chg from acc_hap a, hap_chg b where a.hid = b.hid and acc in %(l)s', par_acc)
 hap = cur.fetchall()
-
 genoSample = {} 
 for line in hap:
     acc = line[0]
@@ -161,14 +175,14 @@ for line in hap:
         x = change.split("_")
         site = int(x[0]) - 1
         genoSample[acc][site] = indelInfo[varID]['altNT'][0] # 'NAAAA'
-#    logging.info("Genotypes collected for sample %s at %s", acc, sampleCt)
-#    sampleCt += 1
-#print(genoSample)
+#    logging.info("Genotypes collected for sample %s at site %s with %s is %s", acc, site, varID, genoSample[acc][site])
 logging.info("genotypes collected for : n = %s isolates, at %s", len(list(genoSample.keys())), datetime.datetime.now())
 filteredEPIs = list(genoSample.keys())
 filteredEPIs.sort() # filter out EPIs contains only low-freq variants
-#print(filteredEPIs)
-#sys.exit()
+for acc in filteredEPIs:
+    x = genoSample[acc]
+    print(acc, x)
+ sys.exit()
 #####################
 # construct VCF records
 #############################
@@ -189,6 +203,8 @@ header = vcfpy.Header(
 
 with vcfpy.Writer.from_path(args.vcf, header) as writer:
     for site in snpDict:
+        if site != 29:
+            continue
         geno = {}
         genoCalls = []
         refNT = snpInfo[site]['refNT'] 
@@ -204,11 +220,14 @@ with vcfpy.Writer.from_path(args.vcf, header) as writer:
         for acc in filteredEPIs:
             allele = 0
             if site in genoSample[acc]: # is mutated
+                print(genoSample[acc][site])
                 if genoSample[acc][site] in geno: # alt is valid
                     allele = geno[genoSample[acc][site]]
-#                    logging.info("alt assigned for %s at %s: %s", acc, site, allele)
+                    logging.info("alt assigned for %s at %s: %s", acc, site, allele)
                 else: # alt is singleton/discarded
                     logging.warning("alt is singleton for %s at %s: assign ref allele", acc, site)
+#            else:
+#                logging.info("ref alleles assigned for %s at %s", acc, site)
 
             sampleCall = vcfpy.Call(
                 sample = acc,
