@@ -23,21 +23,24 @@ Main queries:
      select a.acc, a.col_date, b.area, b.country from human_anno a, vgeo b where a.need is true and a.geo_id=b.geo_id and a.acc != %s and a.acc != %s and b.country = %s order by col_date;
      select acc, chg from acc_hap a, hap_chg b where a.hid = b.hid and acc in %(l)s;
 Outputs:
-	iso.tsv
-	var.tsv
+	iso.tsv (isolates, geo, collection dates)
+	var.tsv (variants with consequence calls and frequency/counts)
+
+TO DO:
+   implement command-line options (for continent & country)
+   standardize dates
 
 ##############################
 # Step 3. Export vcf.gz file
 ###############################
 Personnel: Weigang
-Script: export-vcf.py --iso <iso.tsv> --var <snp.tsv> --vcf country.vcf
+Script: export-vcf.py --iso <iso.tsv> --var <snp.tsv>
 Main queries:
      select * from cv_snp where concat(alt, site) = %s;
      select * from cv_del where del = %s;
      select * from cv_ins where ins = %s;
      select acc, chg from acc_hap a, hap_chg b where a.hid = b.hid and acc in %(l)s;
 Outputs:
-	var.tsv (contains consequence calls)
 	country.vcf (gzip to vcf.gz)
 
 ##############################
