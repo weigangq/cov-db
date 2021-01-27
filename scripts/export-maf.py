@@ -108,7 +108,8 @@ def get_variant(changeList):
             'codonPos': str(dataSNP[3]) if isCoding else 'NA',
             'locPos': str(dataSNP[7]) if isCoding else 'NA',
             'conseq': conseq,
-            'freq': str(round(varFreq[change],6))
+            'freq': str(round(varFreq[change],6)),
+            'count': str(varAccCt[change])
         }
 
     logging.info("Number of SNPs: n = %s", snpCt)
@@ -135,7 +136,8 @@ def get_variant(changeList):
                 'codonPos': 'NA',
                 'locPos': str(dataDEL[2]),
                 'conseq': 'NA',
-                'freq': str(round(varFreq[change],6))
+                'freq': str(round(varFreq[change],6)),
+                'count': str(varAccCt[change])
             }
             
     insCt = 0    
@@ -161,7 +163,8 @@ def get_variant(changeList):
                 'codonPos': 'NA',
                 'locPos': str(dataINS[2]),
                 'conseq': 'NA',
-                'freq': str(round(varFreq[change],6))
+                'freq': str(round(varFreq[change],6)),
+                'count': str(varAccCt[change])
             }
 
     sitesSNPs = list(snpInfo.keys())
@@ -177,13 +180,13 @@ def get_variant(changeList):
     logging.info("Excluding low freq vars: n = %s", lowFreq)
     logging.info("exporting genetic changes with freq >= 0.1%...")
     for site in snpDict.keys(): # str key
-        varOut.write(snpInfo[site]['vartype'] + "\t"+ str(snpInfo[site]['site']) + "\t" + snpInfo[site]['varID'] + "\t" + snpInfo[site]['refNT'] + "\t" + snpInfo[site]['locus'] + "\t" + snpInfo[site]['codonRef'] + "\t" + snpInfo[site]['codonPos'] + "\t" + snpInfo[site]['locPos'] + "\t" + snpInfo[site]['altNT'] + "\t" + snpInfo[site]['conseq'] + "\t"  + snpInfo[site]['freq'] + "\n")
+        varOut.write(snpInfo[site]['vartype'] + "\t"+ str(snpInfo[site]['site']) + "\t" + snpInfo[site]['varID'] + "\t" + snpInfo[site]['refNT'] + "\t" + snpInfo[site]['locus'] + "\t" + snpInfo[site]['codonRef'] + "\t" + snpInfo[site]['codonPos'] + "\t" + snpInfo[site]['locPos'] + "\t" + snpInfo[site]['altNT'] + "\t" + snpInfo[site]['conseq'] + "\t"  + snpInfo[site]['freq'] + "\t" + snpInfo[site]['count'] + "\n")
 
     for site in delDict.keys(): # str key!!
-        varOut.write(delInfo[site]['vartype'] + "\t"+ str(delInfo[site]['site']) + "\t" + delInfo[site]['varID'] + "\t" + delInfo[site]['refNT'] + "\t" + delInfo[site]['locus'] + "\t" + delInfo[site]['codonRef'] + "\t" + delInfo[site]['codonPos'] + "\t" + delInfo[site]['locPos'] + "\t" + delInfo[site]['altNT'] + "\t" + delInfo[site]['conseq'] + "\t"  + delInfo[site]['freq'] + "\n")
+        varOut.write(delInfo[site]['vartype'] + "\t"+ str(delInfo[site]['site']) + "\t" + delInfo[site]['varID'] + "\t" + delInfo[site]['refNT'] + "\t" + delInfo[site]['locus'] + "\t" + delInfo[site]['codonRef'] + "\t" + delInfo[site]['codonPos'] + "\t" + delInfo[site]['locPos'] + "\t" + delInfo[site]['altNT'] + "\t" + delInfo[site]['conseq'] + "\t"  + delInfo[site]['freq'] + "\t" + delInfo[site]['count'] +"\n")
 
     for site in insDict.keys(): # str key!!
-        varOut.write(insInfo[site]['vartype'] + "\t"+ str(insInfo[site]['site']) + "\t" + insInfo[site]['varID'] + "\t" + insInfo[site]['refNT'] + "\t" + insInfo[site]['locus'] + "\t" + insInfo[site]['codonRef'] + "\t" + insInfo[site]['codonPos'] + "\t" + insInfo[site]['locPos'] + "\t" + insInfo[site]['altNT'] + "\t" + insInfo[site]['conseq'] + "\t"  + insInfo[site]['freq'] + "\n")
+        varOut.write(insInfo[site]['vartype'] + "\t"+ str(insInfo[site]['site']) + "\t" + insInfo[site]['varID'] + "\t" + insInfo[site]['refNT'] + "\t" + insInfo[site]['locus'] + "\t" + insInfo[site]['codonRef'] + "\t" + insInfo[site]['codonPos'] + "\t" + insInfo[site]['locPos'] + "\t" + insInfo[site]['altNT'] + "\t" + insInfo[site]['conseq'] + "\t"  + insInfo[site]['freq'] + "\t" + insInfo[site]['count'] +"\n")
 
 ############################################
 # get all genetic changes of each isolate
@@ -214,11 +217,14 @@ logging.info("total genetic changes: n = %s", len(changes))
 
 # apply frequency cutoff
 varFreq = {}
+varAccCt = {}
 for change in changes:
     iso = allSamples[change]
     freq = float(len(iso))/float(len(isoEPIs))
     varFreq[change] = freq
-
+    varAccCt[change] = len(iso)
+#    if change == 'T29':
+#        print(allSamples[change])
 get_variant(changes)
 logging.info("Done!")
 sys.exit
