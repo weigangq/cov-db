@@ -109,7 +109,8 @@ def get_variant(changeList):
             'locPos': str(dataSNP[7]) if isCoding else 'NA',
             'conseq': conseq,
             'freq': str(round(varFreq[change],6)),
-            'count': str(varAccCt[change])
+            'count': str(varAccCt[change]),
+            'aaID': dataSNP[4] + str(int((dataSNP[7]-1)/3)+1) + dataSNP[5] if conseq == 'missense' else 'NA'
         }
 
     logging.info("Number of SNPs: n = %s", snpCt)
@@ -137,7 +138,8 @@ def get_variant(changeList):
                 'locPos': str(dataDEL[2]),
                 'conseq': 'NA',
                 'freq': str(round(varFreq[change],6)),
-                'count': str(varAccCt[change])
+                'count': str(varAccCt[change]),
+                'aaID': 'NA'
             }
             
     insCt = 0    
@@ -164,7 +166,8 @@ def get_variant(changeList):
                 'locPos': str(dataINS[2]),
                 'conseq': 'NA',
                 'freq': str(round(varFreq[change],6)),
-                'count': str(varAccCt[change])
+                'count': str(varAccCt[change]),
+                'aaID': 'NA'
             }
 
     sitesSNPs = list(snpInfo.keys())
@@ -180,13 +183,13 @@ def get_variant(changeList):
     logging.info("Excluding low freq vars: n = %s", lowFreq)
     logging.info("exporting genetic changes with freq >= 0.1%...")
     for site in snpDict.keys(): # str key
-        varOut.write(snpInfo[site]['vartype'] + "\t"+ str(snpInfo[site]['site']) + "\t" + snpInfo[site]['varID'] + "\t" + snpInfo[site]['refNT'] + "\t" + snpInfo[site]['locus'] + "\t" + snpInfo[site]['codonRef'] + "\t" + snpInfo[site]['codonPos'] + "\t" + snpInfo[site]['locPos'] + "\t" + snpInfo[site]['altNT'] + "\t" + snpInfo[site]['conseq'] + "\t"  + snpInfo[site]['freq'] + "\t" + snpInfo[site]['count'] + "\n")
+        varOut.write(snpInfo[site]['vartype'] + "\t"+ str(snpInfo[site]['site']) + "\t" + snpInfo[site]['varID'] + "\t" + snpInfo[site]['refNT'] + "\t" + snpInfo[site]['locus'] + "\t" + snpInfo[site]['codonRef'] + "\t" + snpInfo[site]['codonPos'] + "\t" + snpInfo[site]['locPos'] + "\t" + snpInfo[site]['altNT'] + "\t" + snpInfo[site]['conseq'] + "\t"  + snpInfo[site]['freq'] + "\t" + snpInfo[site]['count'] + "\t" + snpInfo[site]['aaID'] +  "\n")
 
     for site in delDict.keys(): # str key!!
-        varOut.write(delInfo[site]['vartype'] + "\t"+ str(delInfo[site]['site']) + "\t" + delInfo[site]['varID'] + "\t" + delInfo[site]['refNT'] + "\t" + delInfo[site]['locus'] + "\t" + delInfo[site]['codonRef'] + "\t" + delInfo[site]['codonPos'] + "\t" + delInfo[site]['locPos'] + "\t" + delInfo[site]['altNT'] + "\t" + delInfo[site]['conseq'] + "\t"  + delInfo[site]['freq'] + "\t" + delInfo[site]['count'] +"\n")
+        varOut.write(delInfo[site]['vartype'] + "\t"+ str(delInfo[site]['site']) + "\t" + delInfo[site]['varID'] + "\t" + delInfo[site]['refNT'] + "\t" + delInfo[site]['locus'] + "\t" + delInfo[site]['codonRef'] + "\t" + delInfo[site]['codonPos'] + "\t" + delInfo[site]['locPos'] + "\t" + delInfo[site]['altNT'] + "\t" + delInfo[site]['conseq'] + "\t"  + delInfo[site]['freq'] + "\t" + delInfo[site]['count'] + "\t" + delInfo[site]['aaID'] +"\n")
 
     for site in insDict.keys(): # str key!!
-        varOut.write(insInfo[site]['vartype'] + "\t"+ str(insInfo[site]['site']) + "\t" + insInfo[site]['varID'] + "\t" + insInfo[site]['refNT'] + "\t" + insInfo[site]['locus'] + "\t" + insInfo[site]['codonRef'] + "\t" + insInfo[site]['codonPos'] + "\t" + insInfo[site]['locPos'] + "\t" + insInfo[site]['altNT'] + "\t" + insInfo[site]['conseq'] + "\t"  + insInfo[site]['freq'] + "\t" + insInfo[site]['count'] +"\n")
+        varOut.write(insInfo[site]['vartype'] + "\t"+ str(insInfo[site]['site']) + "\t" + insInfo[site]['varID'] + "\t" + insInfo[site]['refNT'] + "\t" + insInfo[site]['locus'] + "\t" + insInfo[site]['codonRef'] + "\t" + insInfo[site]['codonPos'] + "\t" + insInfo[site]['locPos'] + "\t" + insInfo[site]['altNT'] + "\t" + insInfo[site]['conseq'] + "\t"  + insInfo[site]['freq'] + "\t" + insInfo[site]['count'] + "\t" + insInfo[site]['aaID'] +"\n")
 
 ############################################
 # get all genetic changes of each isolate
