@@ -143,7 +143,7 @@ def get_variant(changeList):
             site = int(ins[0])
             alt = ins[1]
             change = dataINS[0]
-            refBase = dataINS[4][dataINS[3]-1] if dataINS[3] else dataINSp[4]
+            refBase = dataINS[4][dataINS[3]-1] if dataINS[3] else dataINS[4]
             insInfo[change] = {
                 'site': site - 1,
                 'vartype': 'INS',
