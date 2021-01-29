@@ -30,19 +30,9 @@ cur = conn.cursor()
 ############################################
 logging.info("getting all samples of %s from the database...", sys.argv[1])
 
-cur.execute("select a.acc, a.col_date, b.area, b.country from human_anno a, vgeo b where a.need is true and a.geo_id=b.geo_id and a.acc != %s and a.acc != %s and b.country = %s order by col_date;", [refEPI, batEPI, sys.argv[1]])
-acc = cur.fetchall()            
-
-acc_output = open('iso_%s.tsv'% sys.argv[1], 'w')
-isoEPIs = []
-for data in acc:
-#    data = list(acc[i]) # make it list, since tuple is not editable
-    isoEPIs.append(data[0])
-    acc_output.write("\t".join(data) + "\n")
-    #print("\t".join(data))
-#isoEPIs.sort()
-acc_output.close()
-logging.info("total isolates: %s", len(isoEPIs))
+cur.execute("select acc, col_date, country, state from vhuman_anno where acc != %s and acc != %s and country = %s order by col_date", [refEPI, batEPI, sys.argv[1]])
+accData = cur.fetchall()            
+isoEPIs = [ iso[0] for iso in accData]
 
 ############################################
 # define a function
@@ -218,7 +208,7 @@ for line in acc_snp:
 changes = list(allSamples.keys())
 logging.info("total genetic changes: n = %s", len(changes))
 
-# apply frequency cutoff
+# get frequency & count for each variant
 varFreq = {}
 varAccCt = {}
 for change in changes:
@@ -226,9 +216,21 @@ for change in changes:
     freq = float(len(iso))/float(len(isoEPIs))
     varFreq[change] = freq
     varAccCt[change] = len(iso)
-#    if change == 'T29':
-#        print(allSamples[change])
+
 get_variant(changes)
+
+# write iso file
+acc_output = open('iso_%s.tsv'% sys.argv[1], 'w')
+for iso in accData:
+    iso = list(iso) # make it list, since tuple is not editable
+    if iso[3] is None:
+        iso[3] = 'NA'
+    iso[1] = re.sub(r"^(\d{4}-\d{2})$", r"\1-15", iso[1])
+    ct = var_count[iso[0]]
+    acc_output.write("\t".join(iso) + "\t" + str(ct) + "\n")
+acc_output.close()
+
+logging.info("total isolates: %s", len(isoEPIs))
 logging.info("Done!")
 sys.exit
 
