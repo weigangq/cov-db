@@ -16,8 +16,8 @@ if len(sys.argv) != 2:
     sys.exit()
 
 freqCut = 0.001    
-refEPI = 'EPI_ISL_406030'
-batEPI = 'EPI_ISL_402131'
+refEPI = 'ISL_406030'
+batEPI = 'ISL_402131'
 logging.basicConfig(level = logging.DEBUG)
 
 # From https://www.postgresqltutorial.com/postgresql-python/connect/
@@ -226,7 +226,7 @@ for iso in accData:
     if iso[3] is None:
         iso[3] = 'NA'
     iso[1] = re.sub(r"^(\d{4}-\d{2})$", r"\1-15", iso[1])
-    ct = var_count[iso[0]]
+    ct = var_count[iso[0]] if iso[0] in var_count else 0 # hid = 1 is not collected
     acc_output.write("\t".join(iso) + "\t" + str(ct) + "\n")
 acc_output.close()
 
