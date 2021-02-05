@@ -233,7 +233,7 @@ with vcfpy.Writer.from_path(args.vcf, header) as writer:
 
             sampleCall = vcfpy.Call(
                 sample = acc,
-                data = {'GT': str(allele)}, # has to be string
+                data = {'GT': str(allele) + "|" + str(allele)  }, # has to be string
                 site = site
             )
             genoCalls.append(sampleCall)
@@ -278,7 +278,7 @@ with vcfpy.Writer.from_path(args.vcf, header) as writer:
 
             sampleCall = vcfpy.Call(
                 sample = acc,
-                data = {'GT': str(allele)}, # has to be string
+                data = {'GT': str(allele) + "|" + str(allele) }, # has to be string
                 site = site 
             )
             genoCalls.append(sampleCall)
