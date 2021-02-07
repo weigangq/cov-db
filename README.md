@@ -1,5 +1,23 @@
 # Workflow for COV mutation analysis
-* Updated on: January 24, 2021 *
+* Updated on: Feb 7, 2021 *
+
+## Haplotype pipeline
+- Command interface:
+```
+ pick-iso-var.py --help
+ export-vcf.py --help
+```
+- Show contries with 1000 or more genomes: 
+`pick-iso-var.py --topmost`
+- Export iso & var for a country:
+`pick-iso-var.py --country India`
+- Filter on a locus
+`pick-iso-var.py --country India --locus S`
+-Filter on missense
+`pick-iso-var.py --country India --missense`
+-Combine options
+`pick-iso-var.py --country Inida --missense --locus S`
+
 
 ## Step 1. GISAID download, parsing into database, update browser
 - Personnel: Edgar & Lia
