@@ -18,7 +18,10 @@ parser = argparse.ArgumentParser(
     description='Sample isolates and filter high-frequency variants')
 
 # Add arguments
-parser.add_argument('country', 
+parser.add_argument('-t', '--topmost', type = int, nargs = '?', const = 1000,
+                    help = 'list countries with at least (default 1000) sequenced genomes')
+
+parser.add_argument('-c', '--country', 
                     help = 'Country name. Quote for names containing blanks, e.g., "South Africa"')
 
 parser.add_argument('-f', '--freq_cut', type = float,
@@ -48,53 +51,13 @@ dbParams = config()
 conn = psycopg2.connect(**dbParams)
 cur = conn.cursor()
 
-############################################
-# get all samples of a country (except the ref and bat)
-############################################
-logging.info("getting all samples of %s from the database...", args.country)
+def countByCountry():
+    logging.info("Count isolates for topmost countries ...")
+    cur.execute("select country, count(*) as count_total from vhuman_anno where acc != %s and acc != %s group by country having count(*) > %s order by count_total desc", [refEPI, batEPI, args.topmost])
+    ctryData = cur.fetchall()            
+    for ctry in ctryData:
+        print(ctry[0] + "\t" + str(ctry[1]))
 
-cur.execute("select acc, col_date, country, state from vhuman_anno where acc != %s and acc != %s and country = %s order by col_date", [refEPI, batEPI, sys.argv[1]])
-accData = cur.fetchall()            
-isoPerMonth = {}
-isoData = {}
-for iso in accData:
-    iso = list(iso) # make it list, since tuple is not editable
-    if iso[3] is None:
-        iso[3] = 'NA'
-    iso[1] = re.sub(r"^(\d{4}-\d{2})$", r"\1-15", iso[1])
-#    colDate = datetime.datetime.strptime(iso[1], "%Y-%m-%d")
-    yearMonth = re.sub(r"-\d{2}$", r"", iso[1])
-    if re.match(r"2019", yearMonth):
-        yearMonth = '2020-01'
-    if yearMonth in isoPerMonth:
-        isoPerMonth[yearMonth].append(iso[0])
-    else:
-        isoPerMonth[yearMonth] = [iso[0]]
-    isoData[iso[0]] = { 'col_date': iso[1],
-                        'country': iso[2],
-                        'state': iso[3],
-                        'var_ct': 0
-    }
-#print(isoPerMonth)
-#sys.exit()
-
-isoEPIs = []
-###########################
-# sample isolates evenly among months
-###############################
-for yearMonth in isoPerMonth:
-    isoCt = isoPerMonth[yearMonth]
-    if len(isoCt) > args.per_month:
-        isoChoose = numpy.random.choice(isoCt, size = args.per_month, replace = False)
-        isoPerMonth[yearMonth] = isoChoose
-    logging.info("sample for month %s: %s", yearMonth, str(len(isoPerMonth[yearMonth])))
-#sys.exit()
-
-for yearMonth in isoPerMonth:
-    isoCt = isoPerMonth[yearMonth]
-    for iso in isoCt:
-        isoEPIs.append(iso)
-#isoEPIs = [ iso[0] for iso in accData]
 
 ############################################
 # define a function
@@ -245,7 +208,7 @@ def get_variant(changeList):
     delDict = dict(sorted(delInfo.items(), key=lambda item: item[1]['site']))
     insDict = dict(sorted(insInfo.items(), key=lambda item: item[1]['site']))
 
-    varOut = open('var_%s.tsv'% sys.argv[1], 'w')
+    varOut = open('var_%s.tsv'% args.country, 'w')
     logging.info("Excluding low freq vars: n = %s", lowFreq)
     logging.info("exporting genetic changes with freq >= %s ...", freqCut)
     for site in snpDict.keys(): # str key
@@ -259,59 +222,120 @@ def get_variant(changeList):
 
     for site in insDict.keys(): # str key!!
         varOut.write(insInfo[site]['vartype'] + "\t"+ str(insInfo[site]['site']) + "\t" + insInfo[site]['varID'] + "\t" + insInfo[site]['refNT'] + "\t" + insInfo[site]['locus'] + "\t" + insInfo[site]['codonRef'] + "\t" + insInfo[site]['codonPos'] + "\t" + insInfo[site]['locPos'] + "\t" + insInfo[site]['altNT'] + "\t" + insInfo[site]['conseq'] + "\t"  + insInfo[site]['freq'] + "\t" + insInfo[site]['count'] + "\t" + insInfo[site]['aaID'] +"\n")
+    varOut.close()
+
+def main():
+############################################
+# get all samples of a country (except the ref and bat)
+############################################
+    logging.info("getting all samples of %s from the database...", args.country)
+    cur.execute("select acc, col_date, country, state from vhuman_anno where acc != %s and acc != %s and country = %s order by col_date", [refEPI, batEPI, args.country])
+    accData = cur.fetchall()            
+    isoPerMonth = {}
+    isoData = {}
+    for iso in accData:
+        iso = list(iso) # make it list, since tuple is not editable
+        if iso[3] is None:
+            iso[3] = 'NA'
+
+        iso[1] = re.sub(r"^(\d{4}-\d{2})$", r"\1-15", iso[1])
+            #    colDate = datetime.datetime.strptime(iso[1], "%Y-%m-%d")
+
+        yearMonth = re.sub(r"-\d{2}$", r"", iso[1])
+        if re.match(r"2019", yearMonth):
+            yearMonth = '2020-01'
+
+        if yearMonth in isoPerMonth:
+            isoPerMonth[yearMonth].append(iso[0])
+        else:
+            isoPerMonth[yearMonth] = [iso[0]]
+
+        isoData[iso[0]] = { 'col_date': iso[1],
+                            'country': iso[2],
+                            'state': iso[3],
+                            'var_ct': 0 # initialize
+                        }
+
+###########################
+# sample isolates evenly among months
+###############################
+    isoEPIs = []
+    for yearMonth in isoPerMonth:
+        isoCt = isoPerMonth[yearMonth]
+        if len(isoCt) > args.per_month:
+            isoChoose = numpy.random.choice(isoCt, size = args.per_month, replace = False)
+            isoPerMonth[yearMonth] = isoChoose
+        logging.info("sample for month %s: %s", yearMonth, str(len(isoPerMonth[yearMonth])))
+
+    for yearMonth in isoPerMonth:
+        isoCt = isoPerMonth[yearMonth]
+        for iso in isoCt:
+            isoEPIs.append(iso)
 
 ############################################
 # get all genetic changes of each isolate
 ############################################
-logging.info("getting all genetic changes: SNPs and indels...")
-l = tuple(isoEPIs)
-params = {'a': l}
-cur.execute('select acc, chg from acc_hap a, hap_chg b where a.hid = b.hid and acc in %(a)s', params)
-acc_snp = cur.fetchall()
 
-allSamples = {}
-var_count = {}
-for line in acc_snp:
-    acc = line[0]
-    chg = line[1]
-    if chg in allSamples:
-        allSamples[chg].append(acc)
-    else:
-        allSamples[chg] = [acc]
+    logging.info("getting all genetic changes: SNPs and indels...")
+    l = tuple(isoEPIs)
+    params = {'a': l}
+    cur.execute('select acc, chg from acc_hap a, hap_chg b where a.hid = b.hid and acc in %(a)s', params)
+    acc_snp = cur.fetchall()
+
+    allSamples = {}
+    var_count = {}
+    for line in acc_snp:
+        acc = line[0]
+        chg = line[1]
+        if chg in allSamples:
+            allSamples[chg].append(acc)
+        else:
+            allSamples[chg] = [acc]
  
-    if acc in var_count:
-        var_count[acc] += 1
-    else:
-        var_count[acc] = 1
+        if acc in var_count:
+            var_count[acc] += 1
+        else:
+            var_count[acc] = 1
     
-changes = list(allSamples.keys())
-logging.info("total genetic changes: n = %s", len(changes))
+        changes = list(allSamples.keys())
+    logging.info("total genetic changes: n = %s", len(changes))
 
 # get frequency & count for each variant
-varFreq = {}
-varAccCt = {}
-for change in changes:
-    iso = allSamples[change]
-    freq = float(len(iso))/float(len(isoEPIs))
-    varFreq[change] = freq
-    varAccCt[change] = len(iso)
+    global varFreq # needs to be accessed in get_variant
+    global varAccCt
+    varFreq = {}
+    varAccCt = {}
+    for change in changes:
+        iso = allSamples[change]
+        freq = float(len(iso))/float(len(isoEPIs))
+        varFreq[change] = freq
+        varAccCt[change] = len(iso)
 
-get_variant(changes)
+    get_variant(changes)
 
 # write iso file
-acc_output = open('iso_%s.tsv'% sys.argv[1], 'w')
-for iso in isoEPIs:
-    if iso in var_count: # hid = 1 is not collected
-        isoData[iso]['var_ct'] = var_count[iso]
-    acc_output.write(iso + "\t" + "\t" + 
-                     isoData[iso]['col_date'] + "\t" + 
-                     isoData[iso]['country'] + "\t" + 
-                     isoData[iso]['state'] + "\t" + 
-                     str(isoData[iso]['var_ct']) + "\n")
-acc_output.close()
+    acc_output = open('iso_%s.tsv'% args.country, 'w')
+    for iso in isoEPIs:
+        if iso in var_count: # hid = 1 is not collected
+            isoData[iso]['var_ct'] = var_count[iso]
+        acc_output.write(iso + "\t" + "\t" + 
+                         isoData[iso]['col_date'] + "\t" + 
+                         isoData[iso]['country'] + "\t" + 
+                         isoData[iso]['state'] + "\t" + 
+                         str(isoData[iso]['var_ct']) + "\n")
+    acc_output.close()
 
-logging.info("total isolates: %s", len(isoEPIs))
-logging.info("Done!")
+    logging.info("total isolates: %s", len(isoEPIs))
+    logging.info("Done!")
+#    sys.exit()
+
+if args.topmost is not None:
+    countByCountry()
+else:
+    if args.country is None:
+        logging.info("Provide a country name: --country <name>")
+    else:
+        main()
 sys.exit()
 
 
