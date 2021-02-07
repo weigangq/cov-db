@@ -10,12 +10,16 @@
 - Show contries with 1000 or more genomes: 
 `pick-iso-var.py --topmost`
 - Export iso & var for a country:
-`pick-iso-var.py --country India`
-- Filter on a locus
+```
+pick-iso-var.py --country India # default sample size & var freq: at most 100 per month; at least 0.5% var frequency 
+pick-iso-var.py --country India --freq_cut 0.01 # change minimum freq
+pick-iso-var.py --country India --per_month 200 # change most number per month
+```
+- Filter on a locus:
 `pick-iso-var.py --country India --locus S`
--Filter on missense
+-Filter on missense:
 `pick-iso-var.py --country India --missense`
--Combine options
+-Combine options:
 `pick-iso-var.py --country Inida --missense --locus S`
 
 
