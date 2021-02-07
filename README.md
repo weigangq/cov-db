@@ -1,5 +1,5 @@
 # Workflow for COV mutation analysis
-* Updated on: Feb 7, 2021 *
+* Updated on: Feb 7, 2021
 
 ## Haplotype pipeline
 - Command interface:
@@ -17,9 +17,9 @@ pick-iso-var.py --country India --per_month 200 # change most number per month
 ```
 - Filter on a locus:
 `pick-iso-var.py --country India --locus S`
--Filter on missense:
+- Filter on missense:
 `pick-iso-var.py --country India --missense`
--Combine options:
+- Combine options:
 `pick-iso-var.py --country Inida --missense --locus S`
 
 
