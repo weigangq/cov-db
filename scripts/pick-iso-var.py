@@ -40,6 +40,7 @@ parser.add_argument('-p', '--per_month', type = int, default = 100,
                     help = 'Sample size per month (default 100)')
 
 args = parser.parse_args()
+ctryName = args.country.replace(' ', '_')
 
 freqCut = args.freq_cut    
 refEPI = 'ISL_406030'
@@ -208,7 +209,7 @@ def get_variant(changeList):
     delDict = dict(sorted(delInfo.items(), key=lambda item: item[1]['site']))
     insDict = dict(sorted(insInfo.items(), key=lambda item: item[1]['site']))
 
-    varOut = open('var_%s.tsv'% args.country, 'w')
+    varOut = open('var_%s.tsv'% ctryName, 'w')
     logging.info("Excluding low freq vars: n = %s", lowFreq)
     logging.info("exporting genetic changes with freq >= %s ...", freqCut)
     for site in snpDict.keys(): # str key
@@ -314,7 +315,7 @@ def main():
     get_variant(changes)
 
 # write iso file
-    acc_output = open('iso_%s.tsv'% args.country, 'w')
+    acc_output = open('iso_%s.tsv'% ctryName, 'w')
     for iso in isoEPIs:
         if iso in var_count: # hid = 1 is not collected
             isoData[iso]['var_ct'] = var_count[iso]

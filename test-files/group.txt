@@ -1,0 +1,7 @@
+Asia;#0099ff
+Europe;#33cc33
+Africa;#ff66ff
+South America;#ff9933
+North America;#ff0000
+Oceania;#00ffff
+
