@@ -2,6 +2,7 @@
 
 # 2/8/2021
 # Parse TCS gml output
+# Ref URL: https://savage.net.au/Ron/html/Fancy.Matching.of.Delimited.Text.html
 
 use strict;
 use Data::Dumper;
@@ -57,7 +58,7 @@ for my $node ($parser -> tree -> traverse){
 
     if ($nodeDepth == 2 && $text eq ']') {
 	if ($in_node) {
-	    push @nodes, $nd;
+	    push @nodes, $nd if $nd->{label} ne 'NA';
 	    $in_node = 0;
 	}
 
@@ -69,11 +70,15 @@ for my $node ($parser -> tree -> traverse){
 
     if ($text =~ /id\s+(\d+)\s+label\s+\"(.*)\"/) {
 	$nd->{id} = $1;
-	my $lab = $2;
-	$lab =~ s/\s//g;
-	$nd->{label} = $lab ? $lab : 'NA';
-	$numInNodes ++ unless $lab;
-    } 
+	my $lab = $2; # " "  for InNodes; "" for unlabeled nodes (not sure what)
+	if ($lab) {
+	    $lab =~ s/\s//g;
+	    $nd->{label} = $lab ? $lab : 'InNode';
+	    $numInNodes ++ unless $lab;
+	} else {
+	    $nd->{label} = "NA";
+	}
+    }
 
     if ($text =~ /outgroup\s+weight\s*=\s+(0\.\d+).+frequency=\s*(\d+)\s+(\S.+\d+)\s+.+Sequence\s+.Sequence\s+=([ATCG]+)/) {
 	$nd->{freq} = $2;
