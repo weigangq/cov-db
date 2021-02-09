@@ -40,7 +40,6 @@ parser.add_argument('-p', '--per_month', type = int, default = 100,
                     help = 'Sample size per month (default 100)')
 
 args = parser.parse_args()
-ctryName = args.country.replace(' ', '_')
 
 freqCut = args.freq_cut    
 refEPI = 'ISL_406030'
@@ -304,6 +303,8 @@ def main():
 # get frequency & count for each variant
     global varFreq # needs to be accessed in get_variant
     global varAccCt
+    global ctryName
+    ctryName = args.country.replace(' ', '_')
     varFreq = {}
     varAccCt = {}
     for change in changes:
