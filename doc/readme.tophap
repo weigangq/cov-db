@@ -1,0 +1,132 @@
+#############################################
+# get top-freq S locus haplotypes
+# Working directory: /mnt/c/Users/lai/Dropbox/cov2
+#####################################################
+
+1. get top countries:
+../cov-db/scripts/pick-iso-var.py -t > top-country.tsv
+
+2. get missense for S locus
+cat top-country.tsv | cut -f1 | while read line; do ../cov-db/scripts/pick-iso-var.py --country "$line" --locus S --missense; done
+
+3. get unique var sites
+cat var_* | cut -f1-10,13 | sort -u > ../var_uniq.tsv
+wc var_uniq.tsv
+=> n=191 (S locus, all missense)
+n=182 sites (some multiallelic sites)
+
+4. export vcf, for each country, with the same var file but sampled isolates
+for f in s-locus-analysis/iso_*.tsv; do name=$(basename $f .tsv | sed "s/iso_//"); ../cov-db/scripts/export-vcf.py --iso $f --var var_uniq.tsv --vcf $name.vcf; done
+
+for f in [[:upper:]]*.vcf; do gzip $f; done
+
+5. Export FASTA files, per country
+for f in s-locus-analysis/*.vcf.gz; do name=$(basename $f .vcf.gz); bcftools query -l $f > $name.samples; done
+
+# change directory to s-locus-analysis &  run:
+for f in *.samples; do name=$(basename $f .samples); cat $f | while read line; do echo ">$line"; bcftools query -s "$line" -f '[%TGT]' $name.vcf.gz; echo; done > $name-S-missense.fas; done
+
+6. Combine and identify unique haplotypes
+bioaln -i'fasta' -o'fasta' -u total.fas > total-ST.fas 2> total-ST.counts
+bioseq -n total-ST.fas
+=> n = 605 unique STs
+wc total-ST.counts
+=> n= 20224 isolates: top 1% => freq >= 20
+
+cut -f2 total-ST.counts | sort | uniq -c | sort -nr | less
+
+n= 63 top-freq (1% among 20K isolates from 25 countries with 1K or more genomes) haplotypes, consists of 182 high-freq (0.5% in each country) SNPs, all missense SNPs on S locus:
+
+cut -f2 total-ST.counts | sort | uniq -c | sort -nr | head -63 | tr -s ' ' | cut -f3 -d' ' > top-STs.txt
+  10414 ST2
+   2005 ST1
+   1182 ST42
+   1121 ST13
+    366 ST21
+    283 ST96
+    210 ST47
+    201 ST116
+    186 ST58
+    160 ST142
+    136 ST35
+    123 ST46
+    105 ST54
+     94 ST40
+     81 ST44
+     72 ST305
+     67 ST10
+     66 ST476
+     62 ST204
+     57 ST18
+     54 ST77
+     53 ST65
+     50 ST78
+     50 ST157
+     46 ST49
+     43 ST72
+     43 ST6
+     41 ST475
+     39 ST108
+     37 ST158
+     36 ST4
+     34 ST86
+     34 ST103
+     33 ST277
+     32 ST80
+     32 ST479
+     31 ST59
+     30 ST64
+     29 ST23
+     29 ST221
+     28 ST201
+     28 ST186
+     28 ST137
+     26 ST69
+     25 ST61
+     24 ST544
+     24 ST198
+     24 ST195
+     24 ST182
+     24 ST112
+     23 ST68
+     23 ST31
+     23 ST162
+     22 ST248
+     22 ST216
+     21 ST52
+     21 ST41
+     21 ST334
+     21 ST194
+     20 ST70
+     20 ST33
+     20 ST167
+     20 ST155
+
+7. Get tree:
+bioseq -p'file:top-STs.txt' total-ST.fas > top-STs.fas
+fasttree -nt top-STs.fas > top-STs.dnd
+
+8. Get network with TCS
+grep -f top-STs.txt -w total-ST.counts > top-ST.counts
+=> n = 18299 genomes/isolates
+
+echo "18299 182" > tmp.phy
+bioseq -L top.fas | tr '\t' ';' > tmp.lfa
+sed 's/;/  /; s/^IS//' tmp.lfa >> tmp.phy
+
+group file: "group.txt"
+Asia;#0099ff
+Europe;#33cc33
+Africa;#ff66ff
+South America;#ff9933
+North America;#ff0000
+Oceania;#00ffff
+
+haplotype file: "hap.txt"
+perl -e 'my %area; while(<>){chomp; @a = split "\t", $_; $area{$a[0]} = $a[1] } open IN, "<total-iso.tsv"; while(<IN>){chomp; @a=split "\t", $_; $a[0] =~ s/^IS//; print $a[0], ";", $area{$a[3]}, "\n"}' top-country.tsv > hap.txt
+
+C:\Users\lai\Dropbox\QiuDi\TCS-project>java -jar -Xmx1g TCS.jar # increase memory
+
+9. Parse GML network file
+script/parse-gml.pl top.gml > edgeList.tsv
+

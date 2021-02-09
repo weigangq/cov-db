@@ -46,9 +46,9 @@ for my $node ($parser -> tree -> traverse){
 
     if ($nodeDepth == 2 && $text =~ /node/) {
 	$nd = {
-	    freq => undef,
-	    out_wt => undef,
-	    seq_str => undef,
+	    freq => 1,
+	    out_wt => 0,
+	    seq_str => 'NA',
 	    iso => undef,
 	    label => undef,
 	    id => undef,
@@ -73,8 +73,8 @@ for my $node ($parser -> tree -> traverse){
 	my $lab = $2; # " "  for InNodes; "" for unlabeled nodes (not sure what)
 	if ($lab) {
 	    $lab =~ s/\s//g;
-	    $nd->{label} = $lab ? $lab : 'InNode';
-	    $numInNodes ++ unless $lab;
+	    $nd->{label} = $lab ? $lab : 'InNode' . $numInNodes++;
+#	    $numInNodes ++ unless $lab;
 	} else {
 	    $nd->{label} = "NA";
 	}
@@ -125,6 +125,26 @@ for my $node ($parser -> tree -> traverse){
 
 #print Dumper(\@nodes, \@edges);
 warn "Num of nodes\t", scalar(@nodes), "\nNum of innodes\t", $numInNodes, "\nNum of edges\t", scalar(@edges), "\n";
+
+my %nodes;
+foreach my $nd (@nodes) { $nodes{$nd->{id}} = $nd }
+
+foreach my $edg (@edges) {
+    print join "\t", ($edg->{label},
+		      $edg->{node_from},
+		      $edg->{node_to},
+		      $nodes{$edg->{node_from}}->{freq},
+		      $nodes{$edg->{node_to}}->{freq},
+		      $nodes{$edg->{node_from}}->{label},
+		      $nodes{$edg->{node_to}}->{label},
+		      $nodes{$edg->{node_from}}->{seq_str},
+		      $nodes{$edg->{node_to}}->{seq_str},
+		      $edg->{nt_from},
+		      $edg->{nt_to}
+    );
+    print "\n";
+}
+
 exit;
 
 
