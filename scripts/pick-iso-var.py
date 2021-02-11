@@ -229,7 +229,7 @@ def main():
 # get all samples of a country (except the ref and bat)
 ############################################
     logging.info("getting all samples of %s from the database...", args.country)
-    cur.execute("select acc, col_date, country, state from vhuman_anno where acc != %s and acc != %s and country = %s order by col_date", [refEPI, batEPI, args.country])
+    cur.execute("select acc, col_date, country, state, area_id from vhuman_anno where acc != %s and acc != %s and country = %s order by col_date", [refEPI, batEPI, args.country])
     accData = cur.fetchall()            
     isoPerMonth = {}
     isoData = {}
@@ -253,6 +253,7 @@ def main():
         isoData[iso[0]] = { 'col_date': iso[1],
                             'country': iso[2],
                             'state': iso[3],
+                            'area': "Area_" + str(iso[4]),
                             'var_ct': 0 # initialize
                         }
 
@@ -324,6 +325,7 @@ def main():
                          isoData[iso]['col_date'] + "\t" + 
                          isoData[iso]['country'] + "\t" + 
                          isoData[iso]['state'] + "\t" + 
+                         isoData[iso]['area'] + "\t" + 
                          str(isoData[iso]['var_ct']) + "\n")
     acc_output.close()
 
