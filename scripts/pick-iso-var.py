@@ -321,7 +321,7 @@ def main():
     for iso in isoEPIs:
         if iso in var_count: # hid = 1 is not collected
             isoData[iso]['var_ct'] = var_count[iso]
-        acc_output.write(iso + "\t" + "\t" + 
+        acc_output.write(iso + "\t" + 
                          isoData[iso]['col_date'] + "\t" + 
                          isoData[iso]['country'] + "\t" + 
                          isoData[iso]['state'] + "\t" + 
