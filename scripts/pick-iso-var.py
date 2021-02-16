@@ -27,11 +27,14 @@ parser.add_argument('-c', '--country',
 parser.add_argument('-f', '--freq_cut', type = float,
                     help = 'provide minimum variant frequency (default 0.005)', default = 0.005)
 
+parser.add_argument('-l', '--locus', 
+                    help = 'select a locus')
+
 parser.add_argument('-m', '--missense', action = 'store_true',
                     help = 'missense SNPs only')
 
-parser.add_argument('-l', '--locus', 
-                    help = 'select a locus')
+parser.add_argument('-r', '--r4s', 
+                    help = 'add rate4site output to var output (require --snp and --locus options)')
 
 parser.add_argument('-s', '--snp', action = 'store_true',
                     help = 'SNPs only')
@@ -118,6 +121,7 @@ def get_variant(changeList):
         if args.missense and conseq != 'missense':
             continue
 
+        aaCode = dataSNP[4] + str(int((dataSNP[7]-1)/3)+1)            
         snpInfo[change] = {
             'site': site,
             'varID': "cv" + "-" + change,
@@ -131,7 +135,8 @@ def get_variant(changeList):
             'conseq': conseq,
             'freq': str(round(varFreq[change],6)),
             'count': str(varAccCt[change]),
-            'aaID': dataSNP[4] + str(int((dataSNP[7]-1)/3)+1) + dataSNP[5] if conseq == 'missense' else 'NA'
+            'aaID': aaCode + dataSNP[5] if conseq == 'missense' else 'NA',
+            'r4s': str(rate4site[aaCode]) if aaCode in rate4site else 'NA',
         }
 
     logging.info("Number of SNPs: n = %s", snpCt)
@@ -164,7 +169,8 @@ def get_variant(changeList):
                 'conseq': 'NA',
                 'freq': str(round(varFreq[change],6)),
                 'count': str(varAccCt[change]),
-                'aaID': 'NA'
+                'aaID': 'NA',
+                'r4s': 'NA'
             }
             
     insCt = 0    
@@ -196,7 +202,8 @@ def get_variant(changeList):
                 'conseq': 'NA',
                 'freq': str(round(varFreq[change],6)),
                 'count': str(varAccCt[change]),
-                'aaID': 'NA'
+                'aaID': 'NA',
+                'r4s': 'NA'
             }
 
     sitesSNPs = list(snpInfo.keys())
@@ -212,16 +219,16 @@ def get_variant(changeList):
     logging.info("Excluding low freq vars: n = %s", lowFreq)
     logging.info("exporting genetic changes with freq >= %s ...", freqCut)
     for site in snpDict.keys(): # str key
-        varOut.write(snpInfo[site]['vartype'] + "\t"+ str(snpInfo[site]['site']) + "\t" + snpInfo[site]['varID'] + "\t" + snpInfo[site]['refNT'] + "\t" + snpInfo[site]['locus'] + "\t" + snpInfo[site]['codonRef'] + "\t" + snpInfo[site]['codonPos'] + "\t" + snpInfo[site]['locPos'] + "\t" + snpInfo[site]['altNT'] + "\t" + snpInfo[site]['conseq'] + "\t"  + snpInfo[site]['freq'] + "\t" + snpInfo[site]['count'] + "\t" + snpInfo[site]['aaID'] +  "\n")
+        varOut.write(snpInfo[site]['vartype'] + "\t"+ str(snpInfo[site]['site']) + "\t" + snpInfo[site]['varID'] + "\t" + snpInfo[site]['refNT'] + "\t" + snpInfo[site]['locus'] + "\t" + snpInfo[site]['codonRef'] + "\t" + snpInfo[site]['codonPos'] + "\t" + snpInfo[site]['locPos'] + "\t" + snpInfo[site]['altNT'] + "\t" + snpInfo[site]['conseq'] + "\t"  + snpInfo[site]['freq'] + "\t" + snpInfo[site]['count'] + "\t" + snpInfo[site]['aaID'] + "\t" + snpInfo[site]['r4s'] + "\t" + ctryName + "\n")
 
     if args.missense or args.snp:
         return
 
     for site in delDict.keys(): # str key!!
-        varOut.write(delInfo[site]['vartype'] + "\t"+ str(delInfo[site]['site']) + "\t" + delInfo[site]['varID'] + "\t" + delInfo[site]['refNT'] + "\t" + delInfo[site]['locus'] + "\t" + delInfo[site]['codonRef'] + "\t" + delInfo[site]['codonPos'] + "\t" + delInfo[site]['locPos'] + "\t" + delInfo[site]['altNT'] + "\t" + delInfo[site]['conseq'] + "\t"  + delInfo[site]['freq'] + "\t" + delInfo[site]['count'] + "\t" + delInfo[site]['aaID'] +"\n")
+        varOut.write(delInfo[site]['vartype'] + "\t"+ str(delInfo[site]['site']) + "\t" + delInfo[site]['varID'] + "\t" + delInfo[site]['refNT'] + "\t" + delInfo[site]['locus'] + "\t" + delInfo[site]['codonRef'] + "\t" + delInfo[site]['codonPos'] + "\t" + delInfo[site]['locPos'] + "\t" + delInfo[site]['altNT'] + "\t" + delInfo[site]['conseq'] + "\t"  + delInfo[site]['freq'] + "\t" + delInfo[site]['count'] + "\t" + delInfo[site]['aaID'] + "\t" + delInfo[site]['r4s'] + ctryName + "\n")
 
     for site in insDict.keys(): # str key!!
-        varOut.write(insInfo[site]['vartype'] + "\t"+ str(insInfo[site]['site']) + "\t" + insInfo[site]['varID'] + "\t" + insInfo[site]['refNT'] + "\t" + insInfo[site]['locus'] + "\t" + insInfo[site]['codonRef'] + "\t" + insInfo[site]['codonPos'] + "\t" + insInfo[site]['locPos'] + "\t" + insInfo[site]['altNT'] + "\t" + insInfo[site]['conseq'] + "\t"  + insInfo[site]['freq'] + "\t" + insInfo[site]['count'] + "\t" + insInfo[site]['aaID'] +"\n")
+        varOut.write(insInfo[site]['vartype'] + "\t"+ str(insInfo[site]['site']) + "\t" + insInfo[site]['varID'] + "\t" + insInfo[site]['refNT'] + "\t" + insInfo[site]['locus'] + "\t" + insInfo[site]['codonRef'] + "\t" + insInfo[site]['codonPos'] + "\t" + insInfo[site]['locPos'] + "\t" + insInfo[site]['altNT'] + "\t" + insInfo[site]['conseq'] + "\t"  + insInfo[site]['freq'] + "\t" + insInfo[site]['count'] + "\t" + insInfo[site]['aaID'] +  "\t" + insInfo[site]['r4s'] + ctryName + "\n")
     varOut.close()
 
 def main():
@@ -333,6 +340,23 @@ def main():
     logging.info("Done!")
 #    sys.exit()
 
+rate4site = {}
+if args.r4s is not None:
+    if args.snp is None or args.locus is None or args.country is None:
+        logging.info("--r4s works only with --locus, --snp, and --country")
+        sys.exit()
+    else:
+        logging.info("reading rate4site file....")
+        with open(args.r4s) as r4s:
+            lines = r4s.readlines()
+            for line in lines:
+                lineMatch = re.match(r"(\d+)\s+(\S)\s+(-*\d\.\d+)\s+", line)
+                if lineMatch:
+                    aaSite = str(lineMatch.group(1))
+                    refAA = lineMatch.group(2)
+                    rate = lineMatch.group(3)
+                    rate4site[refAA + aaSite] = rate
+    
 if args.topmost is not None:
     countByCountry()
 else:
@@ -340,6 +364,7 @@ else:
         logging.info("Provide a country name: --country <name>")
     else:
         main()
+
 sys.exit()
 
 
