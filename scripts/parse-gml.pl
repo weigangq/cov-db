@@ -80,7 +80,7 @@ for my $node ($parser -> tree -> traverse){
 	}
     }
 
-    if ($text =~ /outgroup\s+weight\s*=\s+(0\.\d+).+frequency=\s*(\d+)\s+(\S.+\d+)\s+.+Sequence\s+.Sequence\s+=([ATCG]+)/) {
+    if ($text =~ /outgroup\s+weight\s*=\s+(0\.\d+).+frequency=\s*(\d+)\s+(.+)\"\s+.+Sequence\s+.Sequence\s+=([ATCG]+)/) {
 	$nd->{freq} = $2;
 	$nd->{out_wt} = $1;
 	$nd->{seq_str} = $4;
@@ -109,7 +109,7 @@ for my $node ($parser -> tree -> traverse){
 	$edg->{nt_to} = $2;
     }
 
-    if ($text =~ /linestyle\s+.+label\s+\"(\d+)\"/) {
+    if ($text =~ /linestyle\s+.+label\s+\"(\S+)\"/) {
 	$edg->{label} = $1;
     }
 
@@ -129,6 +129,8 @@ warn "Num of nodes\t", scalar(@nodes), "\nNum of innodes\t", $numInNodes, "\nNum
 my %nodes;
 foreach my $nd (@nodes) { $nodes{$nd->{id}} = $nd }
 
+print join "\t", ('edge_id', 'id_from', 'id_to', 'num_iso_from', 'num_iso_to', 'label_from', 'label_to', 'seq_from', 'seq_to', 'nt_from', 'nt_to');
+print "\n";
 foreach my $edg (@edges) {
     print join "\t", ($edg->{label},
 		      $edg->{node_from},
