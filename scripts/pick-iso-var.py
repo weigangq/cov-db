@@ -121,7 +121,8 @@ def get_variant(changeList):
         if args.missense and conseq != 'missense':
             continue
 
-        aaCode = dataSNP[4] + str(int((dataSNP[7]-1)/3)+1)            
+        aaCode = dataSNP[4] + str(int((dataSNP[7]-1)/3)+1) if isCoding else 'NA'
+            
         snpInfo[change] = {
             'site': site,
             'varID': "cv" + "-" + change,
