@@ -288,7 +288,7 @@ def main():
     logging.info("getting all genetic changes: SNPs and indels...")
     l = tuple(isoEPIs)
     params = {'a': l}
-    cur.execute('select acc, chg, hid_major from acc_hap a, hap_chg b where a.hid = b.hid and acc in %(a)s', params)
+    cur.execute('select acc, chg, a.hid from acc_hap a, hap_chg b where a.hid_full = b.hid and acc in %(a)s', params)
     acc_lines = cur.fetchall() 
 
     hidMajor = {}
