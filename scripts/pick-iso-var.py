@@ -288,14 +288,22 @@ def main():
     logging.info("getting all genetic changes: SNPs and indels...")
     l = tuple(isoEPIs)
     params = {'a': l}
-    cur.execute('select acc, chg from acc_hap a, hap_chg b where a.hid = b.hid and acc in %(a)s', params)
-    acc_snp = cur.fetchall()
+    cur.execute('select acc, chg, hid_major from acc_hap a, hap_chg b where a.hid = b.hid and acc in %(a)s', params)
+    acc_lines = cur.fetchall() 
+
+    hidMajor = {}
+    cur.execute("select * from hap_lineage")
+    lineage_lines = cur.fetchall() 
+    for line in lineage_lines:
+        hidMajor[line[0]] = line[1]
 
     allSamples = {}
     var_count = {}
-    for line in acc_snp:
+    lineage = {}
+    for line in acc_lines:
         acc = line[0]
         chg = line[1]
+        lineage[acc] = hidMajor[line[2]]
         if chg in allSamples:
             allSamples[chg].append(acc)
         else:
@@ -334,7 +342,9 @@ def main():
                          isoData[iso]['country'] + "\t" + 
                          isoData[iso]['state'] + "\t" + 
                          isoData[iso]['area'] + "\t" + 
-                         str(isoData[iso]['var_ct']) + "\n")
+                         str(isoData[iso]['var_ct']) + "\t" +
+                         lineage[iso] + "\n"
+        )
     acc_output.close()
 
     logging.info("total isolates: %s", len(isoEPIs))
