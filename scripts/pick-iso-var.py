@@ -237,12 +237,15 @@ def main():
 # get all samples of a country (except the ref and bat)
 ############################################
     logging.info("getting all samples of %s from the database...", args.country)
-    cur.execute("select acc, col_date, country, state, area_id from vhuman_anno where acc != %s and acc != %s and country = %s order by col_date", [refEPI, batEPI, args.country])
+    cur.execute("select acc, col_date, country, state, area_id, pangolin_lineage from vhuman_anno_weigang where acc != %s and acc != %s and country = %s order by col_date", [refEPI, batEPI, args.country])
     accData = cur.fetchall()            
     isoPerMonth = {}
     isoData = {}
+    panLineage = {}
     for iso in accData:
         iso = list(iso) # make it list, since tuple is not editable
+        panLineage[iso[0]] = iso[5] # get hid for each acc
+
         if iso[3] is None:
             iso[3] = 'NA'
 
@@ -288,22 +291,20 @@ def main():
     logging.info("getting all genetic changes: SNPs and indels...")
     l = tuple(isoEPIs)
     params = {'a': l}
-    cur.execute('select acc, chg, a.hid from acc_hap a, hap_chg b where a.hid_full = b.hid and acc in %(a)s', params)
+    cur.execute('select acc, chg from acc_hap a, hap_chg b where a.hid = b.hid and acc in %(a)s', params)
     acc_lines = cur.fetchall() 
 
-    hidMajor = {}
-    cur.execute("select * from hap_lineage")
-    lineage_lines = cur.fetchall() 
-    for line in lineage_lines:
-        hidMajor[line[0]] = line[1]
+#    hidMajor = {}
+#    cur.execute("select * from hap_lineage")
+#    lineage_lines = cur.fetchall() 
+#    for line in lineage_lines:
+#        hidMajor[line[0]] = line[1]
 
     allSamples = {}
     var_count = {}
-    lineage = {}
     for line in acc_lines:
         acc = line[0]
         chg = line[1]
-        lineage[acc] = hidMajor[line[2]]
         if chg in allSamples:
             allSamples[chg].append(acc)
         else:
@@ -343,7 +344,7 @@ def main():
                          isoData[iso]['state'] + "\t" + 
                          isoData[iso]['area'] + "\t" + 
                          str(isoData[iso]['var_ct']) + "\t" +
-                         lineage[iso] + "\n"
+                         panLineage[iso] + "\n"
         )
     acc_output.close()
 
