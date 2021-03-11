@@ -7,8 +7,8 @@ import logging
 import sys
 import argparse
 import pprint
-from BCBio import GFF
-from BCBio.GFF import GFFExaminer
+#from BCBio import GFF
+#from BCBio.GFF import GFFExaminer
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
@@ -16,6 +16,8 @@ from progress.bar import Bar
 import copy
 import numpy as np
 from numpy.random import default_rng
+import datetime
+
 rng = default_rng() # Random number generator
 
 # Initialize parser
@@ -27,16 +29,19 @@ parser = argparse.ArgumentParser(
 parser.add_argument('-b', '--genbank', 
                     help='GenBank file (from NCBI)')
 
-parser.add_argument('-f', '--gff', 
-                    help='GFF file (from NCBI)')
+# parser.add_argument('-f', '--gff', 
+#                    help='GFF file (from NCBI)')
+
+parser.add_argument('-t', '--tag', default = 'out',
+                    help='tag of output files')
 
 parser.add_argument('-l', '--fasta', 
                     help='FASTA file (correponding to GFF)')
 
 parser.add_argument('-w', '--fitness', type = float, default = 1,
-                    help='fitness discount of nonsynonymous mutation (with respect to ref genome). Neutral by default. Set < 1 for negative selection')
+                    help='fitness discount of nonsynonymous mutation (with respect to ref genome). Neutral by default. Set < 1 for negative/background selection')
 
-parser.add_argument('-g', '--generations', type=int, default=100,
+parser.add_argument('-g', '--generations', type=int, default=200,
                     help='Number of generations (default = 100)')
 
 parser.add_argument('-p', '--population', type=int, default=100,
@@ -55,13 +60,19 @@ parser.add_argument('-r', '--recombination', type=float, default = 0,
                     help='Recombination rate in the form of template switching(default=0.1)')
 
 args = parser.parse_args()
-logging.basicConfig(level = logging.DEBUG)
+tagRun = args.tag
+logging.basicConfig(filename = "%s-run.log" % tagRun,
+                    filemode = "w",
+                    level = logging.DEBUG)
+logging.info("Start timestamp: %s", datetime.datetime.now())
 
 if args.genbank is None:
     logging.info("Need a Genbank file as --genbank NC_045512.2.gb")
     sys.exit()
 
 fit = args.fitness
+
+'''
 def examine_gff():
     in_file = args.gff
     examiner = GFFExaminer()
@@ -87,6 +98,7 @@ def parse_gff():
 #examine_gff()
 #parse_gff()
 #sys.exit()
+'''
 
 def gene_locations(genbank):
     '''
@@ -586,7 +598,7 @@ def outputFasta(population, sample_size):
         sequences.append(sequence_record)
     SeqIO.write(sequences, 'evolved-sequences.fasta', 'fasta')
 
-def outputVCF(gen, population, sample_size, fhInd):
+def outputVariant(gen, population, sample_size, fhInd):
     '''
         A function that takes a sample from the final population and outputs
         evolved sequences in a FASTA format.
@@ -610,10 +622,14 @@ def outputVCF(gen, population, sample_size, fhInd):
 
         for site in population_sample[i]['sites']:
             if site in posInfo:
-                position_info = posInfo[site]
-                gene = cdsObj[position_info['geneId']]
-                gene['sample_synon'] += population_sample[i]['synon']
-                gene['sample_missense'] += population_sample[i]['missense']
+                if site in sample_sites: # count unique gene sites
+                    continue
+                else:
+                    sample_sites[site] = 1
+                    position_info = posInfo[site]
+                    gene = cdsObj[position_info['geneId']]
+                    gene['sample_synon'] += population_sample[i]['synon']
+                    gene['sample_missense'] += population_sample[i]['missense']
 
 def simulation(num_gen, pop_size, num_gametes, mut_rate, rec_rate, sample_size):
     '''
@@ -635,29 +651,33 @@ def simulation(num_gen, pop_size, num_gametes, mut_rate, rec_rate, sample_size):
             of the simulation. 
     '''
     genome_len = len(genomeSeq)
-    print("Simulate CoV genome evolution under Wright-Fisher model")
-    print("* Genome length: %s nt" % genome_len, "\n",
-          "* Population size:", pop_size, "\n",
-          "* Gamete number:", num_gametes, "\n",
-          "* Mutation rate:", mut_rate, "per genome per generation", "\n",
-          "* Recombination rate:", rec_rate, "per genome per generation", "\n",
-          "* Running generations:", num_gen, "\n",
-          "Running......")
+    logging.info("Simulate CoV genome evolution under Wright-Fisher model")
+    logging.info("Genome file: -b %s nt", args.genbank)
+    logging.info("Evolution model: -w %s (fitness discount for a missense mutation)", args.fitness)
+    logging.info("Genome length: %s nt", genome_len)
+    logging.info("Population size: -p %s individuals", pop_size)
+    logging.info("Sample size: -p %s individuals per generation", args.sample)
+    logging.info("Gamete size: -n %s per individual", num_gametes)
+    logging.info("Mutation rate: -m %s per genome per generation", mutation_rate)
+    logging.info("Recombination rate: -r %s per genome per generation", rec_rate)
+    logging.info("Total generations: -g %s", num_gen)
     # output samples
     pop = initialize(pop_size)
     bar = Bar('Generation', max = num_gen) # Progress bar
-    hapOut = open("wf-sample.tsv", "w")
+    hapOut = open("%s-samples.tsv" % tagRun, "w")
     for generation in range(1, num_gen + 1):
         pop = wright_fisher(pop, genome_len, num_gametes, pop_size, mut_rate, rec_rate)
-        outputVCF(generation, pop, sample_size, hapOut)
+        outputVariant(generation, pop, sample_size, hapOut)
         bar.next()  # Progress
     hapOut.close()
+    logging.info("Mutation counts per sample written to file %s-samples.tsv", tagRun)
 
     # output genes
-    geneOut = open("wf-gene.tsv", "w")
-    for geneId in cdsObj:
-        geneOut.write(geneId + "\t" + cdsObj[geneId]['product'] + "\t" + str(cdsObj[geneId]['sample_synon']) + "\t" + str(cdsObj[geneId]['sample_missense']) + "\n")
+    geneOut = open("%s-genes.tsv" % tagRun, "w")
+    for geneId in cdsObj: # handles compound location beautifully
+        geneOut.write(geneId + "\t" +  str(len(cdsObj[geneId]['location'])) + "\t" + cdsObj[geneId]['product'] + "\t" + str(cdsObj[geneId]['sample_synon']) + "\t" + str(cdsObj[geneId]['sample_missense']) + "\n")
     geneOut.close()
+    logging.info("Mutation counts per gene written to file %s-genes.tsv", tagRun)
     bar.finish()
     # outputFasta(pop, sample_size)
 
@@ -671,11 +691,10 @@ recombination_rate = args.recombination
 ref_gb = SeqIO.read(args.genbank, 'genbank')
 genomeSeq = list(str(ref_gb.seq)) # make a list
 recurMutSites = {}
-#mutInOrfs = {}
 cdsObj = gene_locations(ref_gb)
-#print(cdsObj)
 posInfo = position_info(ref_gb)
 
+sample_sites = {} # record unique sample sites
 
 simulation(
     generations, 
@@ -686,9 +705,12 @@ simulation(
     sample_size
 )
 
+recurFile = open("%s-recur.tsv" % tagRun, "w")
 for site in recurMutSites:
     if recurMutSites[site] > 1:
-        print(recurMutSites[site])
+        recurFile.write(str(site) + "\t" + str(recurMutSites[site]) + "\n")
+recurFile.close()
+logging.info("End timestamp: %s", datetime.datetime.now())
 sys.exit()
 
 
