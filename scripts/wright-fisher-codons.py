@@ -447,7 +447,7 @@ def initialize(size):
 #                "sites": np.array([]),
                 "sites": [],
                 'seq': genomeSeq,
-                'fitness': 1,
+                'fitness': 1.0,
                 'synon': 0,
                 'missense': 0,
                 'igs': 0
