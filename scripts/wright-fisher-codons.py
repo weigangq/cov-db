@@ -3,8 +3,8 @@
 # Simulate CoV genome evolution under Wright-Fisher model
 # Main simulator
 # To do:
-# 1. fix recurrence (for samples only; identify reversal)
-# 2. customize mutation frequencies
+# Done: 1. fix recurrence (for samples only; identify reversal)
+# Done: 2. customize mutation counts
 
 import logging
 import sys
@@ -25,7 +25,7 @@ rng = default_rng() # Random number generator
 
 # Initialize parser
 parser = argparse.ArgumentParser(
-    description='Wright-Fisher Simulator for Covid-19. Required input: a Genbank file. Outputs: two files: wf-sample.tsv (sample lineage and muations) & wf-gene.tsv (mutations in samples per gene); to be read to get evolutionary stats by cov-sim-stats.')
+    description="Wright-Fisher Simulator for SARS-CoV-2 genome evolution (version: 1.00). Required input: a Genbank file. Outputs: six files: tag-run.tsv (log of simulation parameters), tag-samples.tsv (mutations per sample, for plotting num mutations over generation), tag-genes.tsv (mutations per gene), tag-vars.tsv (snp info, VCF style), tag-sties.tsv (mutated sites per sample, for e.g., pi stats for use by sim-stats.py) and tag-lineages.tsv (lineage per sample, for reconstruction of coalescent tree). Three selection schemes are implemented: default is background + adaptive (-u 0.1 -v 0.01). For neutral evolution, use -u 0 and -v 0. For background selection, use -v 0. Selection coefficient could be changed with -x (negative coefficeint, default 0.95) and -y (positive coefficient, default 1.05).")
 
 ################################
 # Arguments
@@ -38,7 +38,7 @@ parser.add_argument('-b', '--genbank',
 # parser.add_argument('-f', '--gff',
 #                    help='GFF file (from NCBI)')
 
-parser.add_argument('-t', '--tag', default = 'out',
+parser.add_argument('-t', '--tag', default = 'test',
                     help='prefix for output files (default "out")')
 
 parser.add_argument('-s', '--sample', type=int, default=10,
@@ -65,8 +65,7 @@ parser.add_argument('-r', '--recombination', type=float, default = 0,
 
 # Arguments for selection schemes
 
-parser.add_argument('-w', '--fitness', type = float, default = 1,
-                    help='fitness cost of a missense mutation (with respect to ref genome) under negative/purifying selection (default 0.95)')
+#parser.add_argument('-w', '--fitness', type = float, default = 1,                    help='fitness cost of a missense mutation (with respect to ref genome) under negative/purifying selection (default 0.95)')
 
 
 parser.add_argument('-x', '--fit_neg', type = float, default = 0.95,
@@ -102,7 +101,7 @@ genomeSeq = list(str(ref_gb.seq)) # make a list
 fitNeg = args.fit_neg
 fitPos = args.fit_pos
 probNeg = args.prob_neg
-probPos = args.prob_neg
+probPos = args.prob_pos
 
 '''
 def examine_gff():
@@ -365,19 +364,19 @@ def fitness(individual, mutation_site, new_base):
             base3 = mutation_site + 2
             pre_codon = ''.join(ind_seq[mutation_site : mutation_site + 3])
             new_codon = new_base + ind_seq[base2] + ind_seq[base3]
-#            new_codon = new_base + genomeSeq[base2] + genomeSeq[base3]
+#           bug: new_codon = new_base + genomeSeq[base2] + genomeSeq[base3]
         elif index == 1: # Second base of codon
             base1 = mutation_site - 1
             base3 = mutation_site + 1
             pre_codon = ''.join(ind_seq[mutation_site-1 : mutation_site + 2])
             new_codon = ind_seq[base1] + new_base + ind_seq[base3]
-#            new_codon = genomeSeq[base1] + new_base + genomeSeq[base3]
+#           bug: new_codon = genomeSeq[base1] + new_base + genomeSeq[base3]
         else: # Third base of codon
             base1 = mutation_site - 2
             base2 = mutation_site - 1
             pre_codon = ''.join(ind_seq[mutation_site-2 : mutation_site + 1])
             new_codon = ind_seq[base1] + ind_seq[base2] + new_base
-#            new_codon = genomeSeq[base1] + genomeSeq[base2] + new_base
+#           bug: new_codon = genomeSeq[base1] + genomeSeq[base2] + new_base
         # BioPython Seq object
         pre_codon = Seq(pre_codon)
         new_codon = Seq(new_codon)
@@ -391,15 +390,15 @@ def fitness(individual, mutation_site, new_base):
         # obtain fitness with respect to ref genome
         if new_amino_acid == position_info['aa']: # synonymous (including stop)
             individual['synon'] += 1
-            site['fit'] = 1
+            site['fit'] = 1.0
             site['conseq'] = 'synonymous'
-            individual['fitness'] *= 1
+            individual['fitness'] *= 1.0
         elif new_amino_acid == '*' or position_info['aa'] == '*': # sense <=> stop
             individual['fitness'] = 0 # remove from gametes
             site['fit'] = 0
             site['conseq'] = 'nonsense'
         else: # nonsyn
-            fit = rng.choice([fitNeg, 1, fitPos], p=[probNeg, 1 - probNeg - probPos, probPos]) # 89% missense neutral, 10% negative, 1% positive
+            fit = rng.choice([fitNeg, 1.0, fitPos], p=[probNeg, 1 - probNeg - probPos, probPos]) # 89% missense neutral, 10% negative, 1% positive
             individual['missense'] += 1
             individual['fitness'] *= fit
             site['fit'] = fit
@@ -541,7 +540,7 @@ def reproduction(pop, num_gametes, mut_rate):
                     if mut_site in recurMutSites:
                         recurMutSites[mut_site] += 1
                     else:
-                        recurMutSites[mut_site] = 0
+                        recurMutSites[mut_site] = 1
 
                 # Mutate individual
                 gamete = mutate(gamete, mut_sites)
@@ -654,7 +653,7 @@ def wright_fisher(pop, genome_len, num_gametes, pop_size, mut_rate, rec_rate):
     gamete_next = rng.choice(gamete_pool, pop_size, replace=False)
     return gamete_next
 
-def outputVariant(gen, population, sample_size, fhInd, fhLine, seqs, samp_sites):
+def outputVariant(gen, population, sample_size, fhInd, fhLine, fhSite, seqs, samp_sites):
     '''
         A function that takes a sample from the final population and outputs
         evolved sequences in a FASTA format.
@@ -676,14 +675,14 @@ def outputVariant(gen, population, sample_size, fhInd, fhLine, seqs, samp_sites)
             Seq("".join(population_sample[i]['seq'])), id = samId, name = samId)
         seqs.append(sequence_record)
 
-        fhInd.write(tagRun  + "\t" + str(gen) + "\t" + samId + "\t" + str(population_sample[i]['fitness']) + "\t" + str(population_sample[i]['igs']) + "\t" + str(population_sample[i]['synon']) + "\t" + str(population_sample[i]['missense']) + "\n")
+        fhInd.write(tagRun  + "\t" + str(gen) + "\t" + samId + "\t" + str(round(population_sample[i]['fitness'],4)) + "\t" + str(population_sample[i]['igs']) + "\t" + str(population_sample[i]['synon']) + "\t" + str(population_sample[i]['missense']) + "\n")
 
         fhLine.write(tagRun  + "\t"  + samId + "\t" + lineage_info  + "\n")
 
-#        fhSite.write(tagRun  + "\t" + samId + "\t" + sites_info + "\n")
-
+        sites = []
         for site in population_sample[i]['sites']:
             pos = site['mut_site']
+            sites.append(str(pos))
             alt = site['nt_post']
             snpID = str(pos) + "_" + alt
             if snpID in samp_sites:
@@ -700,6 +699,10 @@ def outputVariant(gen, population, sample_size, fhInd, fhLine, seqs, samp_sites)
                     gene = cdsObj[position_info['geneId']]
                     gene['sample_synon'] += population_sample[i]['synon']
                     gene['sample_missense'] += population_sample[i]['missense']
+
+        site_info = "|".join(sites)
+        fhSite.write(tagRun  + "\t" + samId + "\t" + site_info + "\n")
+
 
 def simulation(num_gen, pop_size, num_gametes, mut_rate, rec_rate, sample_size):
     '''
@@ -723,7 +726,7 @@ def simulation(num_gen, pop_size, num_gametes, mut_rate, rec_rate, sample_size):
     genome_len = len(genomeSeq)
     logging.info("Simulate CoV genome evolution under Wright-Fisher model")
     logging.info("Genome file: -b %s nt", args.genbank)
-    logging.info("Evolution model: -w %s (fitness discount for a missense mutation)", args.fitness)
+#    logging.info("Evolution model: -w %s (fitness discount for a missense mutation)", args.fitness)
     logging.info("Genome length: %s nt", genome_len)
     logging.info("Population size: -p %s individuals", pop_size)
     logging.info("Sample size: -p %s individuals per generation", args.sample)
@@ -731,6 +734,10 @@ def simulation(num_gen, pop_size, num_gametes, mut_rate, rec_rate, sample_size):
     logging.info("Mutation rate: -m %s per genome per generation", mutation_rate)
     logging.info("Recombination rate: -r %s per genome per generation", rec_rate)
     logging.info("Total generations: -g %s", num_gen)
+    logging.info("Negative selection against missense: -u %s probability with -x %s fitness cost", probNeg, fitNeg)
+    logging.info("Positive selection for missense: -v %s probability with -y %s fitness gain", probPos, fitPos)
+    logging.info("Neutral missense: %s probability with fitness of 1", 1 - probNeg - probPos)
+
     # output samples
     pop = initialize(pop_size)
     bar = Bar('Generation', max = num_gen) # Progress bar
@@ -739,17 +746,19 @@ def simulation(num_gen, pop_size, num_gametes, mut_rate, rec_rate, sample_size):
     hapOut = open("%s-samples.tsv" % tagRun, "w")
     lineageOut = open("%s-lineages.tsv" % tagRun, "w")
     varOut = open("%s-vars.tsv" % tagRun, "w")
+    siteOut = open("%s-sites.tsv" % tagRun, "w")
 
     seq_samples = []
     var_sites = {} # unique mutated sites in samples
     for generation in range(1, num_gen + 1):
         pop = wright_fisher(pop, genome_len, num_gametes, pop_size, mut_rate, rec_rate)
-        outputVariant(generation, pop, sample_size, hapOut, lineageOut, seq_samples, var_sites)
+        outputVariant(generation, pop, sample_size, hapOut, lineageOut, siteOut, seq_samples, var_sites)
         bar.next()  # Progress
 
     # close output file handles
     hapOut.close()
     lineageOut.close()
+    siteOut.close()
 
     for snp in var_sites:
         ct = var_sites[snp]['count']
@@ -762,10 +771,11 @@ def simulation(num_gen, pop_size, num_gametes, mut_rate, rec_rate, sample_size):
         alt_aa = site['aa_post']
         ref_codon = site['codon_ref']
         alt_codon = site['codon_post']
-        fit = site['fit']
+        fit = round(site['fit'],4)
         conseq = site['conseq']
+        recur = recurMutSites[pos]
 
-        varOut.write(tagRun + "\t" + str(pos) + "\t" + snp + "\t" + id + "\t" + ref_nt + "\t" + alt_nt + "\t" + ref_aa + "\t" + alt_aa + "\t" + ref_codon + "\t" + alt_codon + "\t" + conseq + "\t" + str(fit) + "\t" + str(ct) + "\n")
+        varOut.write(tagRun + "\t" + str(pos) + "\t" + snp + "\t" + id + "\t" + ref_nt + "\t" + alt_nt + "\t" + ref_aa + "\t" + alt_aa + "\t" + ref_codon + "\t" + alt_codon + "\t" + conseq + "\t" + str(fit) + "\t" + str(ct) + "\t" + str(recur) +  "\n")
     varOut.close()
 
     if args.fasta:
@@ -808,10 +818,10 @@ simulation(
     sample_size
 )
 
-recurFile = open("%s-recur.tsv" % tagRun, "w")
-for site in recurMutSites:
-    if recurMutSites[site] > 1:
-        recurFile.write(str(site) + "\t" + str(recurMutSites[site]) + "\n")
-recurFile.close()
+# recurFile = open("%s-recur.tsv" % tagRun, "w")
+# for site in recurMutSites:
+#    if recurMutSites[site] > 1:
+#        recurFile.write(str(site) + "\t" + str(recurMutSites[site]) + "\n")
+#recurFile.close()
 logging.info("End timestamp: %s", datetime.datetime.now())
 sys.exit()
