@@ -2,6 +2,9 @@
 # Coding: utf-8
 # Simulate CoV genome evolution under Wright-Fisher model
 # Main simulator
+# To do:
+# 1. fix recurrence (for samples only; identify reversal)
+# 2. customize mutation frequencies
 
 import logging
 import sys
@@ -22,36 +25,37 @@ rng = default_rng() # Random number generator
 
 # Initialize parser
 parser = argparse.ArgumentParser(
-    description='Wright-Fisher Simulator for Covid-19. Required input: a Genbank file. Outputs: two files: wf-sample.tsv (sample lineage and muations) & wf-gene.tsv (mutations in samples per gene)')
+    description='Wright-Fisher Simulator for Covid-19. Required input: a Genbank file. Outputs: two files: wf-sample.tsv (sample lineage and muations) & wf-gene.tsv (mutations in samples per gene); to be read to get evolutionary stats by cov-sim-stats.')
 
-# Add arguments
+################################
+# Arguments
+##############################
 
-parser.add_argument('-b', '--genbank', 
-                    help='GenBank file (from NCBI)')
+# Arguments for input & outputs
+parser.add_argument('-b', '--genbank',
+                    help='GenBank file (from NCBI). Required.')
 
-# parser.add_argument('-f', '--gff', 
+# parser.add_argument('-f', '--gff',
 #                    help='GFF file (from NCBI)')
 
 parser.add_argument('-t', '--tag', default = 'out',
-                    help='tag of output files')
+                    help='prefix for output files (default "out")')
 
-parser.add_argument('-l', '--fasta', 
-                    help='FASTA file (correponding to GFF)')
+parser.add_argument('-s', '--sample', type=int, default=10,
+                    help='Sample size (default = 10)')
 
-parser.add_argument('-w', '--fitness', type = float, default = 1,
-                    help='fitness discount of nonsynonymous mutation (with respect to ref genome). Neutral by default. Set < 1 for negative/background selection')
+parser.add_argument('-f', '--fasta', action = 'store_true',
+                    help='output sampled genome seqs (caution: large file size)')
 
+# Arguments for basic evolution parameters
 parser.add_argument('-g', '--generations', type=int, default=200,
                     help='Number of generations (default = 100)')
 
 parser.add_argument('-p', '--population', type=int, default=100,
                     help='Population size (default = 100)')
 
-parser.add_argument('-n', '--gametes', type=int, default=10,
+parser.add_argument('-n', '--gametes', type=int, default=20,
                     help='Number of gametes produced by each genome (default = 10)')
-
-parser.add_argument('-s', '--sample', type=int, default=10,
-                    help='Sample size (default = 10, limit = 100)')
 
 parser.add_argument('-m', '--mutation', type=float, default=0.1,
                     help='Mutation rate per genome per generation (default = 0.1)')
@@ -59,18 +63,46 @@ parser.add_argument('-m', '--mutation', type=float, default=0.1,
 parser.add_argument('-r', '--recombination', type=float, default = 0,
                     help='Recombination rate in the form of template switching(default=0.1)')
 
+# Arguments for selection schemes
+
+parser.add_argument('-w', '--fitness', type = float, default = 1,
+                    help='fitness cost of a missense mutation (with respect to ref genome) under negative/purifying selection (default 0.95)')
+
+
+parser.add_argument('-x', '--fit_neg', type = float, default = 0.95,
+                    help='fitness cost of a missense mutation (with respect to ref genome) under negative/purifying selection (default 0.95)')
+
+parser.add_argument('-y', '--fit_pos', type = float, default = 1.05,
+                    help='fitness gain of a missense mutation (with respect to ref genome) under positive/adaptive selection (default 1.05)')
+
+parser.add_argument('-u', '--prob_neg', type = float, default = 0.10,
+                    help = 'fraction of missense mutations (with respect to ref genome) under negtive selection (default 0.1; set 0 for neutral')
+
+parser.add_argument('-v', '--prob_pos', type = float, default = 0.01,
+                    help = 'fraction of missense mutations (with respect to ref genome) under positive selection (default 0.01; set 0 for neutral)')
+
+######################################
+# Program settings
+#########################################
+
 args = parser.parse_args()
 tagRun = args.tag
 logging.basicConfig(filename = "%s-run.log" % tagRun,
                     filemode = "w",
                     level = logging.DEBUG)
-logging.info("Start timestamp: %s", datetime.datetime.now())
 
 if args.genbank is None:
     logging.info("Need a Genbank file as --genbank NC_045512.2.gb")
     sys.exit()
 
-fit = args.fitness
+ref_gb = SeqIO.read(args.genbank, 'genbank')
+genomeSeq = list(str(ref_gb.seq)) # make a list
+
+# fit = args.fitness
+fitNeg = args.fit_neg
+fitPos = args.fit_pos
+probNeg = args.prob_neg
+probPos = args.prob_neg
 
 '''
 def examine_gff():
@@ -99,19 +131,21 @@ def parse_gff():
 #parse_gff()
 #sys.exit()
 '''
-
+################################
+# Define all functions
+##################################
 def gene_locations(genbank):
     '''
-        A function that reads a GenBank file and returns gene location range 
+        A function that reads a GenBank file and returns gene location range
         and translated protein.
 
         Parameters:
             genbank: GenBank file.
 
         Returns:
-            gene_locations (list): A list of dictionaries containing 
-                                   information about translated protein 
-                                   and its coding gene location 
+            gene_locations (list): A list of dictionaries containing
+                                   information about translated protein
+                                   and its coding gene location
                                    range in the genome.
     '''
     proteins = {}
@@ -134,7 +168,7 @@ def gene_locations(genbank):
             # but ORF7a and ORF7b overlap were kept
             for id in feature.qualifiers['protein_id']:
                 if id in exclude_product:
-                    continue 
+                    continue
                 else:
                     cds = feature.location.extract(genbank.seq) # properly handles compound location
                     pep = cds.translate()
@@ -163,7 +197,7 @@ def get_codons(cds_location):
         Parameters:
             gene_location (dict): A dictionary containing information about
                                   translated protein and its coding gene
-                                  location range in the genome. 
+                                  location range in the genome.
 
         Returns:
             codons (list): A list of tuples representing codons. Each tuple
@@ -180,20 +214,19 @@ def get_codons(cds_location):
                 (position, second_codon_position, third_codon_position))
     return codons
 
-
 def position_info(genbank):
     '''
-        A function that takes in a reference GenBank file as argument and 
+        A function that takes in a reference GenBank file as argument and
         returns information about each coding nucleotide position.
-        
+
         This information includes the nucleotide located at that position,
         the codon it is part of, codon coordinates, and translated amino acid.
 
         Parameters:
             genbank: GenBank file.
-        
+
         Returns:
-            position_data (dict): A dictionary containing information about 
+            position_data (dict): A dictionary containing information about
                                   a specific coding position in a genome.
 
                            position (int): {
@@ -201,7 +234,7 @@ def position_info(genbank):
                                'codons': [
                                    'codon': codon found at that position (str),
                                    'amino_acid': translated amino acid (str),
-                                   'location':  codon position 
+                                   'location':  codon position
                                                (tuple of integer values)
                                ]
                            }
@@ -209,7 +242,7 @@ def position_info(genbank):
     # Get translated protein and coding range
 #    genes = gene_locations(genbank)
     position_data = {}
-    position_data['seq'] = genbank.seq
+#    position_data['seq'] = genbank.seq
     seen_position = {}
 
     for geneId in cdsObj: # for each gene
@@ -237,7 +270,7 @@ def position_info(genbank):
                 seen_position[position] = 1
                 # Nucleotide at that position
                 nucleotide = genbank[position]
-                # Create a codon dictionary 
+                # Create a codon dictionary
 #                codon_object = {
 #                    'codon': codon, 'amino_acid': amino_acid, 'location': codon_location}
                 position_data[position] = {
@@ -272,64 +305,108 @@ def fitness(individual, mutation_site, new_base):
         Neutral + Negative selection model
         All relative to the ancestral genome, not with each other
         A function that checks if a mutation is synonymous or nonsynonymous
-        and tracks nonsynonymous mutation sites. 
+        and tracks nonsynonymous mutation sites.
         1. Nonsyn: fitness decreased (--fitness)
-        2. Syn: fitness = 1. 
-        3. Stop to sense: fitness = 0 
-        4. Sense to stop: fitness = 0 
+        2. Syn: fitness = 1.
+        3. Stop to sense: fitness = 0
+        4. Sense to stop: fitness = 0
 
         Parameters:
             individual (dict): A dictionary representing an individual in a
                                population.
-            mutation_site (int): A position where mutation occurs in 
+            mutation_site (int): A position where mutation occurs in
                                  an individual's sequence.
             new_base (str): New nucleotide after mutation.
             positions (dict): A dictionary containing information
-                                  about each individual coding position 
-                                  in a genome. 
+                                  about each individual coding position
+                                  in a genome.
 
         Returns:
             individual (dict): Individual with a changed fitness value
                                if there was a nonsynonymous mutation.
     '''
+    ind_seq = individual['seq']
+    site = {
+        'mut_site': mutation_site,
+        'nt_ref': genomeSeq[mutation_site],
+        'nt_pre': ind_seq[mutation_site],  # before mutation
+        'nt_post': new_base,
+        'gene_id': 'NA',
+        'codon_ref': 'NA',
+        'codon_pre': 'NA',
+        'codon_post': 'NA',
+        'aa_ref': 'NA',
+        'aa_post': 'NA',
+        'aa_pre': 'NA',
+        'conseq': 'NA',
+        'fit': 1.0
+    }
+
     # Return individual as it is if a mutation occurs at a non-coding site
     if mutation_site not in posInfo:
         individual['igs'] += 1
-        return individual
+    else: # in cds
+        # Get information for selected position (codon and translated amino acid)
+        position_info = posInfo[mutation_site]
+        #    print(position_info)
+        #    print(str(mutation_site))
+        #    for codon in position_info['location']:
+        gene = cdsObj[position_info['geneId']]
+        index = position_info['location'].index(mutation_site) # What part of codon
+        site['gene_id'] = position_info['geneId']
+        site['nt_ref'] = position_info['nt']
+        site['aa_ref'] = position_info['aa']
+        site['codon_ref'] = position_info['codon']
 
-    # Get information for selected position (codon and translated amino acid)
-    position_info = posInfo[mutation_site]
-    #    print(position_info)
-    #    print(str(mutation_site))
-    #    for codon in position_info['location']:
-    gene = cdsObj[position_info['geneId']]
-    index = position_info['location'].index(mutation_site) # What part of codon
-    new_codon = ''
-    if index == 0: # First base of codon
-        base2 = mutation_site + 1
-        base3 = mutation_site + 2
-        new_codon = new_base + genomeSeq[base2] + genomeSeq[base3]
-    elif index == 1: # Second base of codon
-        base1 = mutation_site - 1
-        base3 = mutation_site + 1
-        new_codon = genomeSeq[base1] + new_base + genomeSeq[base3]
-    else: # Third base of codon
-        base1 = mutation_site - 2
-        base2 = mutation_site - 1
-        new_codon = genomeSeq[base1] + genomeSeq[base2] + new_base
-    # BioPython Seq object
-    new_codon = Seq(new_codon) 
-    new_amino_acid = new_codon.translate()
-    if new_amino_acid == position_info['aa']: # synonymous (including stop)
-        individual['synon'] += 1
-        # gene['sample_synon'] += 1
-        individual['fitness'] *= 1
-    elif new_amino_acid == '*' or position_info['aa'] == '*': # sense <=> stop
-        individual['fitness'] = 0 # remove from gametes
-    else: # nonsyn
-        # gene['sample_missense'] += 1
-        individual['missense'] += 1
-        individual['fitness'] *= fit                 
+        pre_codon = ''
+        new_codon = ''
+        if index == 0: # First base of codon
+            base2 = mutation_site + 1
+            base3 = mutation_site + 2
+            pre_codon = ''.join(ind_seq[mutation_site : mutation_site + 3])
+            new_codon = new_base + ind_seq[base2] + ind_seq[base3]
+#            new_codon = new_base + genomeSeq[base2] + genomeSeq[base3]
+        elif index == 1: # Second base of codon
+            base1 = mutation_site - 1
+            base3 = mutation_site + 1
+            pre_codon = ''.join(ind_seq[mutation_site-1 : mutation_site + 2])
+            new_codon = ind_seq[base1] + new_base + ind_seq[base3]
+#            new_codon = genomeSeq[base1] + new_base + genomeSeq[base3]
+        else: # Third base of codon
+            base1 = mutation_site - 2
+            base2 = mutation_site - 1
+            pre_codon = ''.join(ind_seq[mutation_site-2 : mutation_site + 1])
+            new_codon = ind_seq[base1] + ind_seq[base2] + new_base
+#            new_codon = genomeSeq[base1] + genomeSeq[base2] + new_base
+        # BioPython Seq object
+        pre_codon = Seq(pre_codon)
+        new_codon = Seq(new_codon)
+        site['codon_post'] = str(new_codon)
+        site['codon_pre'] = str(pre_codon)
+        pre_aa = str(pre_codon.translate())
+        new_amino_acid = str(new_codon.translate())
+        site['aa_pre'] = pre_aa
+        site['aa_post'] = new_amino_acid
+
+        # obtain fitness with respect to ref genome
+        if new_amino_acid == position_info['aa']: # synonymous (including stop)
+            individual['synon'] += 1
+            site['fit'] = 1
+            site['conseq'] = 'synonymous'
+            individual['fitness'] *= 1
+        elif new_amino_acid == '*' or position_info['aa'] == '*': # sense <=> stop
+            individual['fitness'] = 0 # remove from gametes
+            site['fit'] = 0
+            site['conseq'] = 'nonsense'
+        else: # nonsyn
+            fit = rng.choice([fitNeg, 1, fitPos], p=[probNeg, 1 - probNeg - probPos, probPos]) # 89% missense neutral, 10% negative, 1% positive
+            individual['missense'] += 1
+            individual['fitness'] *= fit
+            site['fit'] = fit
+            site['conseq'] = 'missense'
+#    print(site)
+    individual['sites'].append(site)
+#    np.append(individual['sites'], site)
     return individual
 
 '''
@@ -362,25 +439,26 @@ def initialize(size):
                             'fitness': individual fitness (float),
                             'nonsynonymous': nonsynonymous mutation sites (numpy.ndarray)
                         }
-    '''  
+    '''
     population = []
     for i in range(size):
         population.append(
             {
-                "lineage": [], 
-                "sites": np.array([]), 
-                'seq': genomeSeq, 
+                "lineage": [],
+#                "sites": np.array([]),
+                "sites": [],
+                'seq': genomeSeq,
                 'fitness': 1,
                 'synon': 0,
                 'missense': 0,
                 'igs': 0
-#                'nonsyn': np.array([]) 
+#                'nonsyn': np.array([])
             })
     return population
 
 def mutate(individual, mutation_sites):
     '''
-        A function that mutates a selected individual sequence and checks 
+        A function that mutates a selected individual sequence and checks
         if the mutation was synonymous or nonsynonymous. Individual fitness
         gets decreased for each nonsynonymous mutation.
 
@@ -392,13 +470,17 @@ def mutate(individual, mutation_sites):
                                   coding position in a genome.
 
         Returns:
-            individual (dict): Returns individual dictionary with a 
+            individual (dict): Returns individual dictionary with a
                                mutated sequence and changed fitness
-                               value for each nonsynonymous mutation.         
+                               value for each nonsynonymous mutation.
     '''
     sequence = individual['seq']
 
+#    gamete_sites = np.concatenate((individual['sites'], mutation_sites), axis=None)
+#    individual['sites'] = gamete_sites
+
     # if multiple sites in a single codon, check one site at a time
+    # mutation matrix to be made customizable
     for site in mutation_sites:
         site = int(site)
         mutated_base = sequence[site]
@@ -410,7 +492,7 @@ def mutate(individual, mutation_sites):
             sequence[site] = rng.choice(['A', 'C', 'G'], p=[0.15, 0.70, 0.15])
         else:
             sequence[site] = rng.choice(['A', 'C', 'T'], p=[0.80, 0.05, 0.15])
-        
+
         new_base = sequence[site]
         individual['seq'] = sequence # mutated seq, cumulative
         # Check if nonsynonymous mutation (with respect to ref, not to parent)
@@ -419,9 +501,9 @@ def mutate(individual, mutation_sites):
 
 def reproduction(pop, num_gametes, mut_rate):
     '''
-        A function that performs reproduction with mutation 
+        A function that performs reproduction with mutation
         in a population. Lineage IDs and mutated sites are appended
-        to the individual dictionary objects. 
+        to the individual dictionary objects.
 
         Parameters:
             pop (list): A list of dictionaries representing individuals
@@ -461,11 +543,9 @@ def reproduction(pop, num_gametes, mut_rate):
                     else:
                         recurMutSites[mut_site] = 0
 
-                gamete_sites = np.concatenate((gamete['sites'], mut_sites), axis=None)
-                gamete['sites'] = gamete_sites
                 # Mutate individual
-                gamete = mutate(gamete, mut_sites) 
-                
+                gamete = mutate(gamete, mut_sites)
+
             pool.append(gamete)
     return pool
 
@@ -473,7 +553,7 @@ def reproduction(pop, num_gametes, mut_rate):
 def recombination(pool, rec_rate):
     '''
         A function that performs recombination between 2 individual
-        sequences. 
+        sequences.
 
         Parameters:
             pool (list): A list of dictionaries representing individuals.
@@ -512,25 +592,27 @@ def recombination(pool, rec_rate):
         gam2_sites = []
 
         for site in pool[x1]['sites']:
-            if site < breakup:
+            mut_site = site['mut_site']
+            if mut_site < breakup:
                 gam1_sites.append(site)
-                gam1 = fitness(gam1, site, gam1['seq'][site])
+                gam1 = fitness(gam1, mut_site, gam1['seq'][mut_site])
             else:
                 gam2_sites.append(site)
-                gam2 = fitness(gam2, site, gam2['seq'][site])
+                gam2 = fitness(gam2, mut_site, gam2['seq'][mut_site])
 
         for site in pool[x2]['sites']:
+            mut_site = site['mut_site']
             if site < breakup:
                 gam2_sites.append(site)
-                gam2 = fitness(gam2, site, gam2['seq'][site])
+                gam2 = fitness(gam2, mut_site, gam2['seq'][mut_site])
             else:
                 gam1_sites.append(site)
-                gam1 = fitness(gam1, site, gam1['seq'][site])
+                gam1 = fitness(gam1, mut_site, gam1['seq'][mut_site])
         gam1['sites'] = gam1_sites
         gam2['sites'] = gam2_sites
 
-        pool.append(gam1)    
-        pool.append(gam2)    
+        pool.append(gam1)
+        pool.append(gam2)
         return pool
 
 '''
@@ -572,8 +654,7 @@ def wright_fisher(pop, genome_len, num_gametes, pop_size, mut_rate, rec_rate):
     gamete_next = rng.choice(gamete_pool, pop_size, replace=False)
     return gamete_next
 
-# Take a sample from the final population and output sequences in FASTA format
-def outputFasta(population, sample_size):
+def outputVariant(gen, population, sample_size, fhInd, fhLine, seqs, samp_sites):
     '''
         A function that takes a sample from the final population and outputs
         evolved sequences in a FASTA format.
@@ -581,52 +662,41 @@ def outputFasta(population, sample_size):
         Parameters:
             population (list): A list of dictionaries representing individuals.
             sample_size (int): Number of samples.
-        
+
         Outputs:
             evolved-sequences.fasta: A new FASTA file with sampled sequences.
     '''
     population_sample = rng.choice(population, sample_size, replace = False)
-    sequences = []
     for i in range(sample_size):
-        info = 'Seq_' + str(i+1)
+        samId = "_".join(['Seq', str(gen), str(i+1)])
         lineage = [str(l) for l in population_sample[i]['lineage']]
         lineage_info = "|".join(lineage)
-        sites = [str(l) for l in population_sample[i]['sites']]
-        sites_info = "|".join(sites)
+
         sequence_record = SeqRecord(
-            Seq("".join(population_sample[i]['seq'])), id = info, name = info, description = lineage_info + "_" + sites_info)
-        sequences.append(sequence_record)
-    SeqIO.write(sequences, 'evolved-sequences.fasta', 'fasta')
+            Seq("".join(population_sample[i]['seq'])), id = samId, name = samId)
+        seqs.append(sequence_record)
 
-def outputVariant(gen, population, sample_size, fhInd):
-    '''
-        A function that takes a sample from the final population and outputs
-        evolved sequences in a FASTA format.
+        fhInd.write(tagRun  + "\t" + str(gen) + "\t" + samId + "\t" + str(population_sample[i]['fitness']) + "\t" + str(population_sample[i]['igs']) + "\t" + str(population_sample[i]['synon']) + "\t" + str(population_sample[i]['missense']) + "\n")
 
-        Parameters:
-            population (list): A list of dictionaries representing individuals.
-            sample_size (int): Number of samples.
-        
-        Outputs:
-            evolved-sequences.fasta: A new FASTA file with sampled sequences.
-    '''
-    population_sample = rng.choice(population, sample_size, replace = False)
-    sequences = []
-    for i in range(sample_size):
-        info = 'Seq_' + str(i+1)
-        lineage = [str(l) for l in population_sample[i]['lineage']]
-        lineage_info = "|".join(lineage)
-        sites = [str(l) for l in population_sample[i]['sites']]
-        sites_info = "|".join(sites)
-        fhInd.write(str(gen) + "\t" + str(i) + "\t"  + info + "\t" + lineage_info + "\t" + sites_info + "\t" + str(population_sample[i]['fitness']) + "\t" + str(population_sample[i]['igs']) + "\t" + str(population_sample[i]['synon']) + "\t" + str(population_sample[i]['missense']) + "\n")
+        fhLine.write(tagRun  + "\t"  + samId + "\t" + lineage_info  + "\n")
+
+#        fhSite.write(tagRun  + "\t" + samId + "\t" + sites_info + "\n")
 
         for site in population_sample[i]['sites']:
-            if site in posInfo:
-                if site in sample_sites: # count unique gene sites
+            pos = site['mut_site']
+            alt = site['nt_post']
+            snpID = str(pos) + "_" + alt
+            if snpID in samp_sites:
+                samp_sites[snpID]['count'] += 1
+            else:
+                samp_sites[snpID] = {'count': 1, 'info': site }
+
+            if pos in posInfo:
+                if pos in sample_gene_sites: # count unique gene sites
                     continue
                 else:
-                    sample_sites[site] = 1
-                    position_info = posInfo[site]
+                    sample_gene_sites[pos] = 1
+                    position_info = posInfo[pos]
                     gene = cdsObj[position_info['geneId']]
                     gene['sample_synon'] += population_sample[i]['synon']
                     gene['sample_missense'] += population_sample[i]['missense']
@@ -642,13 +712,13 @@ def simulation(num_gen, pop_size, num_gametes, mut_rate, rec_rate, sample_size):
             mut_rate (float): Mutation rate.
             rec_rate (float): Recombination rate.
             sample_size (int): Number of sequences to sample and write to file.
-            reference_seq (Bio.Seq.MutableSeq): Nucleotide sequence used in 
+            reference_seq (Bio.Seq.MutableSeq): Nucleotide sequence used in
                                                 the simulation.
             genbank: GenBank file.
 
         Outputs:
             Outputs a FASTA file containing evolved sequences at the end
-            of the simulation. 
+            of the simulation.
     '''
     genome_len = len(genomeSeq)
     logging.info("Simulate CoV genome evolution under Wright-Fisher model")
@@ -664,23 +734,58 @@ def simulation(num_gen, pop_size, num_gametes, mut_rate, rec_rate, sample_size):
     # output samples
     pop = initialize(pop_size)
     bar = Bar('Generation', max = num_gen) # Progress bar
+
+    # open output file handles
     hapOut = open("%s-samples.tsv" % tagRun, "w")
+    lineageOut = open("%s-lineages.tsv" % tagRun, "w")
+    varOut = open("%s-vars.tsv" % tagRun, "w")
+
+    seq_samples = []
+    var_sites = {} # unique mutated sites in samples
     for generation in range(1, num_gen + 1):
         pop = wright_fisher(pop, genome_len, num_gametes, pop_size, mut_rate, rec_rate)
-        outputVariant(generation, pop, sample_size, hapOut)
+        outputVariant(generation, pop, sample_size, hapOut, lineageOut, seq_samples, var_sites)
         bar.next()  # Progress
+
+    # close output file handles
     hapOut.close()
+    lineageOut.close()
+
+    for snp in var_sites:
+        ct = var_sites[snp]['count']
+        site = var_sites[snp]['info']
+        pos = site['mut_site']
+        id = site['gene_id']
+        ref_nt = site['nt_ref']
+        alt_nt = site['nt_post']
+        ref_aa = site['aa_ref']
+        alt_aa = site['aa_post']
+        ref_codon = site['codon_ref']
+        alt_codon = site['codon_post']
+        fit = site['fit']
+        conseq = site['conseq']
+
+        varOut.write(tagRun + "\t" + str(pos) + "\t" + snp + "\t" + id + "\t" + ref_nt + "\t" + alt_nt + "\t" + ref_aa + "\t" + alt_aa + "\t" + ref_codon + "\t" + alt_codon + "\t" + conseq + "\t" + str(fit) + "\t" + str(ct) + "\n")
+    varOut.close()
+
+    if args.fasta:
+        SeqIO.write(seq_samples, '%s-seqs.fasta' % tagRun, 'fasta')
+        logging.info("Genome seq per sample written to file %s-seqs.tsv", tagRun)
+
     logging.info("Mutation counts per sample written to file %s-samples.tsv", tagRun)
+    logging.info("Lineage info per sample written to file %s-lineages.tsv", tagRun)
+    logging.info("Mutated sites per sample written to file %s-vars.tsv", tagRun)
 
     # output genes
     geneOut = open("%s-genes.tsv" % tagRun, "w")
     for geneId in cdsObj: # handles compound location beautifully
-        geneOut.write(geneId + "\t" +  str(len(cdsObj[geneId]['location'])) + "\t" + cdsObj[geneId]['product'] + "\t" + str(cdsObj[geneId]['sample_synon']) + "\t" + str(cdsObj[geneId]['sample_missense']) + "\n")
+        geneOut.write(tagRun + "\t" + geneId + "\t" +  str(len(cdsObj[geneId]['location'])) + "\t" + cdsObj[geneId]['product'] + "\t" + str(cdsObj[geneId]['sample_synon']) + "\t" + str(cdsObj[geneId]['sample_missense']) + "\n")
     geneOut.close()
     logging.info("Mutation counts per gene written to file %s-genes.tsv", tagRun)
     bar.finish()
     # outputFasta(pop, sample_size)
 
+logging.info("Start timestamp: %s", datetime.datetime.now())
 generations = args.generations
 pop_size = args.population
 num_gametes = args.gametes
@@ -688,20 +793,18 @@ sample_size = args.sample
 mutation_rate = args.mutation
 recombination_rate = args.recombination
 
-ref_gb = SeqIO.read(args.genbank, 'genbank')
-genomeSeq = list(str(ref_gb.seq)) # make a list
 recurMutSites = {}
 cdsObj = gene_locations(ref_gb)
 posInfo = position_info(ref_gb)
 
-sample_sites = {} # record unique sample sites
+sample_gene_sites = {} # record unique sample sites in genes
 
 simulation(
-    generations, 
-    pop_size, 
-    num_gametes, 
-    mutation_rate, 
-    recombination_rate, 
+    generations,
+    pop_size,
+    num_gametes,
+    mutation_rate,
+    recombination_rate,
     sample_size
 )
 
@@ -712,5 +815,3 @@ for site in recurMutSites:
 recurFile.close()
 logging.info("End timestamp: %s", datetime.datetime.now())
 sys.exit()
-
-
