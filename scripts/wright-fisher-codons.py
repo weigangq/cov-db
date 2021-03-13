@@ -74,8 +74,8 @@ parser.add_argument('-x', '--fit_neg', type = float, default = 0.95,
 parser.add_argument('-y', '--fit_pos', type = float, default = 1.05,
                     help='fitness gain of a missense mutation (with respect to ref genome) under positive/adaptive selection (default 1.05)')
 
-parser.add_argument('-u', '--prob_neg', type = float, default = 0.10,
-                    help = 'fraction of missense mutations (with respect to ref genome) under negtive selection (default 0.1; set 0 for neutral')
+parser.add_argument('-u', '--prob_neg', type = float, default = 0.5,
+                    help = 'fraction of missense mutations (with respect to ref genome) under negtive selection (default 0.5; set 0 for neutral')
 
 parser.add_argument('-v', '--prob_pos', type = float, default = 0.01,
                     help = 'fraction of missense mutations (with respect to ref genome) under positive selection (default 0.01; set 0 for neutral)')
