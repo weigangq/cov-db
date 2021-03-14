@@ -53,6 +53,10 @@ logging.basicConfig(level = logging.DEBUG)
 dbParams = config()
 conn = psycopg2.connect(**dbParams)
 cur = conn.cursor()
+snpInfo = {}
+delInfo = {}
+insInfo = {}
+
 
 def countByCountry():
     logging.info("Count isolates for topmost countries ...")
@@ -66,9 +70,6 @@ def countByCountry():
 # define a function
 ############################################
 def get_variant(changeList):
-    snpInfo = {}
-    delInfo = {}
-    insInfo = {}
     varChange = {} # only the high frequency vars
     varCt = 0
     multCt = 0
@@ -79,9 +80,6 @@ def get_variant(changeList):
     insList = []
     seenSite = {}
     for change in changeList:
-        if varFreq[change] < freqCut:
-            lowFreq += 1
-            continue
         varCt += 1
         varChange[change] = 1
         if re.match("[ATCG]\d+", change): # a SNP, combine multi-allelic
@@ -217,20 +215,31 @@ def get_variant(changeList):
     insDict = dict(sorted(insInfo.items(), key=lambda item: item[1]['site']))
 
     varOut = open('var_%s.tsv'% ctryName, 'w')
-    logging.info("Excluding low freq vars: n = %s", lowFreq)
     logging.info("exporting genetic changes with freq >= %s ...", freqCut)
     for site in snpDict.keys(): # str key
+        if varFreq[site] < freqCut:
+            lowFreq += 1
+            continue
         varOut.write(snpInfo[site]['vartype'] + "\t"+ str(snpInfo[site]['site']) + "\t" + snpInfo[site]['varID'] + "\t" + snpInfo[site]['refNT'] + "\t" + snpInfo[site]['locus'] + "\t" + snpInfo[site]['codonRef'] + "\t" + snpInfo[site]['codonPos'] + "\t" + snpInfo[site]['locPos'] + "\t" + snpInfo[site]['altNT'] + "\t" + snpInfo[site]['conseq'] + "\t"  + snpInfo[site]['freq'] + "\t" + snpInfo[site]['count'] + "\t" + snpInfo[site]['aaID'] + "\t" + snpInfo[site]['r4s'] + "\t" + ctryName + "\n")
 
     if args.missense or args.snp:
         return
 
     for site in delDict.keys(): # str key!!
+        for site in delDict.keys(): # str key
+            if varFreq[site] < freqCut:
+                lowFreq += 1
+                continue
         varOut.write(delInfo[site]['vartype'] + "\t"+ str(delInfo[site]['site']) + "\t" + delInfo[site]['varID'] + "\t" + delInfo[site]['refNT'] + "\t" + delInfo[site]['locus'] + "\t" + delInfo[site]['codonRef'] + "\t" + delInfo[site]['codonPos'] + "\t" + delInfo[site]['locPos'] + "\t" + delInfo[site]['altNT'] + "\t" + delInfo[site]['conseq'] + "\t"  + delInfo[site]['freq'] + "\t" + delInfo[site]['count'] + "\t" + delInfo[site]['aaID'] + "\t" + delInfo[site]['r4s'] + ctryName + "\n")
 
     for site in insDict.keys(): # str key!!
+        for site in insDict.keys(): # str key
+            if varFreq[site] < freqCut:
+                lowFreq += 1
+                continue
         varOut.write(insInfo[site]['vartype'] + "\t"+ str(insInfo[site]['site']) + "\t" + insInfo[site]['varID'] + "\t" + insInfo[site]['refNT'] + "\t" + insInfo[site]['locus'] + "\t" + insInfo[site]['codonRef'] + "\t" + insInfo[site]['codonPos'] + "\t" + insInfo[site]['locPos'] + "\t" + insInfo[site]['altNT'] + "\t" + insInfo[site]['conseq'] + "\t"  + insInfo[site]['freq'] + "\t" + insInfo[site]['count'] + "\t" + insInfo[site]['aaID'] +  "\t" + insInfo[site]['r4s'] + ctryName + "\n")
     varOut.close()
+    logging.info("Excluding low freq vars: n = %s", lowFreq)
 
 def main():
 ############################################
@@ -284,6 +293,11 @@ def main():
         for iso in isoCt:
             isoEPIs.append(iso)
 
+    var_count = {}
+    for acc in isoEPIs:
+        var_count[acc] = {'syn': 0, 'mis': 0, 'igs': 0 }
+
+
 ############################################
 # get all genetic changes of each isolate
 ############################################
@@ -294,14 +308,13 @@ def main():
     cur.execute('select acc, chg from acc_hap a, hap_chg b where a.hid = b.hid and acc in %(a)s', params)
     acc_lines = cur.fetchall() 
 
-#    hidMajor = {}
-#    cur.execute("select * from hap_lineage")
-#    lineage_lines = cur.fetchall() 
-#    for line in lineage_lines:
-#        hidMajor[line[0]] = line[1]
-
+    #    hidMajor = {}
+    #    cur.execute("select * from hap_lineage")
+    #    lineage_lines = cur.fetchall() 
+    #    for line in lineage_lines:
+    #        hidMajor[line[0]] = line[1]
+    total_count = {}
     allSamples = {}
-    var_count = {}
     for line in acc_lines:
         acc = line[0]
         chg = line[1]
@@ -310,28 +323,43 @@ def main():
         else:
             allSamples[chg] = [acc]
  
-        if acc in var_count:
-            var_count[acc] += 1
+        if acc in total_count:
+            total_count[acc] += 1
         else:
-            var_count[acc] = 1
+            total_count[acc] = 1
     
         changes = list(allSamples.keys())
     logging.info("total genetic changes: n = %s", len(changes))
 
 # get frequency & count for each variant
-    global varFreq # needs to be accessed in get_variant
-    global varAccCt
+    global varFreq # needed in get_variant
+    global varAccCt # needed in get_variant
     global ctryName
     ctryName = args.country.replace(' ', '_')
     varFreq = {}
     varAccCt = {}
+
     for change in changes:
         iso = allSamples[change]
         freq = float(len(iso))/float(len(isoEPIs))
         varFreq[change] = freq
         varAccCt[change] = len(iso)
-
+ 
     get_variant(changes)
+
+    for change in changes:
+        iso = allSamples[change]
+        if change not in snpInfo:
+            continue
+        conseq = snpInfo[change]['conseq']
+        for acc in iso:
+            if conseq == 'synonymous':
+                var_count[acc]['syn'] += 1
+            elif conseq == 'missense':
+                var_count[acc]['mis'] += 1
+            else:
+                var_count[acc]['igs'] += 1
+
 
 # write iso file
     acc_output = open('iso_%s.tsv'% ctryName, 'w')
@@ -343,7 +371,10 @@ def main():
                          isoData[iso]['country'] + "\t" + 
                          isoData[iso]['state'] + "\t" + 
                          isoData[iso]['area'] + "\t" + 
-                         str(isoData[iso]['var_ct']) + "\t" +
+                         str(isoData[iso]['var_ct']['igs']) + "\t" +
+                         str(isoData[iso]['var_ct']['syn']) + "\t" +
+                         str(isoData[iso]['var_ct']['mis']) + "\t" +
+                         str(total_count[iso]) + "\t" +
                          panLineage[iso] + "\n"
         )
     acc_output.close()

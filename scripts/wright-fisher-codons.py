@@ -25,7 +25,7 @@ rng = default_rng() # Random number generator
 
 # Initialize parser
 parser = argparse.ArgumentParser(
-    description="Wright-Fisher Simulator for SARS-CoV-2 genome evolution (version: 1.00). Required input: a Genbank file. Outputs: six files: tag-run.tsv (log of simulation parameters), tag-samples.tsv (mutations per sample, for plotting num mutations over generation), tag-genes.tsv (mutations per gene), tag-vars.tsv (snp info, VCF style), tag-sties.tsv (mutated sites per sample, for e.g., pi stats for use by sim-stats.py) and tag-lineages.tsv (lineage per sample, for reconstruction of coalescent tree). Three selection schemes are implemented: default is background + adaptive (-u 0.1 -v 0.01). For neutral evolution, use -u 0 and -v 0. For background selection, use -v 0. Selection coefficient could be changed with -x (negative coefficeint, default 0.95) and -y (positive coefficient, default 1.05).")
+    description="Wright-Fisher Simulator for SARS-CoV-2 genome evolution (version: 1.00). Required input: a Genbank file. Outputs: six files: tag-run.tsv (log of simulation parameters), tag-samples.tsv (mutations per sample, for plotting num mutations over generation), tag-genes.tsv (mutations per gene), tag-vars.tsv (snp info, VCF style), tag-sties.tsv (mutated sites per sample, for e.g., pi stats for use by sim-stats.py) and tag-lineages.tsv (lineage per sample, for reconstruction of coalescent tree). Three selection schemes are implemented: default is neutral (-u 0 -v 0). For background seleciton, use -v 0 (and -u e.g. 0.5). For adaptive selection, use -u 0 (and -v e.g., 0.5). Selection coefficient could be changed with -x (negative coefficeint, default 0.95) and -y (positive coefficient, default 1.05).")
 
 ################################
 # Arguments
@@ -74,10 +74,10 @@ parser.add_argument('-x', '--fit_neg', type = float, default = 0.95,
 parser.add_argument('-y', '--fit_pos', type = float, default = 1.05,
                     help='fitness gain of a missense mutation (with respect to ref genome) under positive/adaptive selection (default 1.05)')
 
-parser.add_argument('-u', '--prob_neg', type = float, default = 0.5,
+parser.add_argument('-u', '--prob_neg', type = float, default = 0,
                     help = 'fraction of missense mutations (with respect to ref genome) under negtive selection (default 0.5; set 0 for neutral')
 
-parser.add_argument('-v', '--prob_pos', type = float, default = 0.01,
+parser.add_argument('-v', '--prob_pos', type = float, default = 0,
                     help = 'fraction of missense mutations (with respect to ref genome) under positive selection (default 0.01; set 0 for neutral)')
 
 ######################################
