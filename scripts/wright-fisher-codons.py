@@ -702,7 +702,7 @@ def outputVariant(gen, population, sample_size, fhInd, fhLine, fhSite, seqs, sam
                     gene['sample_missense'] += population_sample[i]['missense']
 
         site_info = "|".join(sites)
-        fhSite.write(tagRun  + "\t" + gen + "\t" + samId + "\t" + site_info + "\n")
+        fhSite.write(tagRun  + "\t" + str(gen) + "\t" + samId + "\t" + site_info + "\n")
 
 
 def simulation(num_gen, pop_size, num_gametes, mut_rate, rec_rate, sample_size):
