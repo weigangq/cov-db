@@ -6,6 +6,7 @@
 # Done: 1. fix recurrence (for samples only; identify reversal)
 # Done: 2. customize mutation counts
 # Exponential pop growth?
+# make mutation bias a constant
 
 import logging
 import sys
@@ -26,7 +27,7 @@ rng = default_rng() # Random number generator
 
 # Initialize parser
 parser = argparse.ArgumentParser(
-    description="Wright-Fisher Simulator for SARS-CoV-2 genome evolution (version: 1.00). Required input: a Genbank file. Outputs: six files: tag-run.tsv (log of simulation parameters), tag-samples.tsv (mutations per sample, for plotting num mutations over generation), tag-genes.tsv (mutations per gene), tag-vars.tsv (snp info, VCF style), tag-sites.tsv (mutated sites per sample, for e.g., pi stats for use by sim-stats.py) and tag-lineages.tsv (lineage per sample, for reconstruction of coalescent tree). Three selection schemes are implemented: default is neutral (-u 0 -v 0). For background seleciton, use -v 0 (and -u e.g. 0.5). For adaptive selection, use -u 0 (and -v e.g., 0.5). Selection coefficient could be changed with -x (negative coefficeint, default 0.95) and -y (positive coefficient, default 1.05).")
+    description="Wright-Fisher Simulator for SARS-CoV-2 genome evolution (version: 1.00). Required input: a Genbank file. Outputs: six files: tag-run.log (log of simulation parameters), tag-samples.tsv (mutations per sample, for plotting num mutations over generation), tag-genes.tsv (mutations per gene), tag-vars.tsv (snp info, VCF style), tag-sites.tsv (mutated sites per sample, for e.g., pi stats for use by sim-stats.py) and tag-lineages.tsv (lineage per sample, for reconstruction of coalescent tree). Three selection schemes are implemented: default is neutral (-u 0 -v 0). For background seleciton, use -v 0 (and -u e.g. 0.5). For adaptive selection, use -u 0 (and -v e.g., 0.5). Selection coefficient could be changed with -x (negative coefficeint, default 0.95) and -y (positive coefficient, default 1.05).")
 
 ################################
 # Arguments
@@ -56,7 +57,7 @@ parser.add_argument('-p', '--population', type=int, default=100,
                     help='Population size (default = 100)')
 
 parser.add_argument('-n', '--gametes', type=int, default=20,
-                    help='Number of gametes produced by each genome (default = 10)')
+                    help='Number of gametes produced by each genome (default = 20)')
 
 parser.add_argument('-m', '--mutation', type=float, default=0.1,
                     help='Mutation rate per genome per generation (default = 0.1)')
@@ -678,7 +679,7 @@ def outputVariant(gen, population, sample_size, fhInd, fhLine, fhSite, seqs, sam
 
         fhInd.write(tagRun  + "\t" + str(gen) + "\t" + samId + "\t" + str(round(population_sample[i]['fitness'],4)) + "\t" + str(population_sample[i]['igs']) + "\t" + str(population_sample[i]['synon']) + "\t" + str(population_sample[i]['missense']) + "\n")
 
-        fhLine.write(tagRun  + "\t"  + samId + "\t" + lineage_info  + "\n")
+        fhLine.write(tagRun  + "\t" + str(gen) + "\t"  + samId + "\t" + lineage_info  + "\n")
 
         sites = []
         for site in population_sample[i]['sites']:
