@@ -42,7 +42,6 @@ parser.add_argument('-b', '--genbank',
 
 parser.add_argument('-t', '--tag', default = 'test',
                     help='prefix for output files (default "out")')
-
 parser.add_argument('-s', '--sample', type=int, default=10,
                     help='Sample size (default = 10)')
 
@@ -56,8 +55,8 @@ parser.add_argument('-g', '--generations', type=int, default=200,
 parser.add_argument('-p', '--population', type=int, default=100,
                     help='Population size (default = 100)')
 
-parser.add_argument('-n', '--gametes', type=int, default=20,
-                    help='Number of gametes produced by each genome (default = 20)')
+#parser.add_argument('-n', '--gametes', type=int, default=20,
+#                    help='Number of gametes produced by each genome (default = 20)')
 
 parser.add_argument('-m', '--mutation', type=float, default=0.1,
                     help='Mutation rate per genome per generation (default = 0.1)')
@@ -104,6 +103,10 @@ fitNeg = args.fit_neg
 fitPos = args.fit_pos
 probNeg = args.prob_neg
 probPos = args.prob_pos
+
+if probNeg + probPos > 1:
+    logging.info("-u and -v add up to more than one. Quit")
+    sys.exit()
 
 '''
 def examine_gff():
@@ -399,7 +402,7 @@ def fitness(individual, mutation_site, new_base):
             individual['fitness'] = 0 # remove from gametes
             site['fit'] = 0
             site['conseq'] = 'nonsense'
-        else: # nonsyn
+        else: # nonsyn; ind fitness is cumulative site/codon fitness
             fit = rng.choice([fitNeg, 1.0, fitPos], p=[probNeg, 1 - probNeg - probPos, probPos]) # 89% missense neutral, 10% negative, 1% positive
             individual['missense'] += 1
             individual['fitness'] *= fit
@@ -500,7 +503,7 @@ def mutate(individual, mutation_sites):
         individual = fitness(individual, site, new_base)
     return individual
 
-def reproduction(pop, num_gametes, mut_rate):
+def reproduction(pop, mut_rate):
     '''
         A function that performs reproduction with mutation
         in a population. Lineage IDs and mutated sites are appended
@@ -520,7 +523,8 @@ def reproduction(pop, num_gametes, mut_rate):
             pool (list): A list of dictionaries representing gamete
                          individuals.
     '''
-    pool = []
+
+    '''
     for i in range(len(pop)):  # For each individual
         ind = pop[i]
         lineage = ind['lineage']
@@ -532,11 +536,27 @@ def reproduction(pop, num_gametes, mut_rate):
         size = int(num_gametes * ind['fitness'])
         for j in range(size):  # For each gamete
             gamete = copy.deepcopy(ind)
-            gamete['lineage'] = lineage + [i]
+            gamete['lineage'] = lineage + [i] # list concat, not append
             num_mut = rng.poisson(mut_rate)  # Draw a Poisson number, mostly 0, 1
+    '''
+    pool = []
+    gam_count = 0
+    while gam_count < len(pop):
+        ind = rng.choice(pop)
+        lineage = ind['lineage']
+        fit_ind = ind['fitness']
+        # expm1 = exp(x) - 1; poisson k>0 probs as fitness cutoff:
+        cut_off = -1 * np.expm1(-1*fit_ind)
+        pick = rng.choice([1,0], p = [cut_off, 1 - cut_off])
+        if pick == 1:
+#            print("picked gamete no " + str(gam_count) + " for ind " + str(fit_ind))
+            gamete = copy.deepcopy(ind)
+            gamete['lineage'] = lineage + [gam_count] # list concat, not append
+            num_mut = rng.poisson(mut_rate)  # Draw a Poisson number, mostly 0, 1
+            gam_count += 1
 
             if num_mut > 0:
-                mut_sites = rng.choice(len(genomeSeq), num_mut)
+                mut_sites = rng.choice(len(genomeSeq), num_mut) # could be the same site
                 # record recurrence
                 for mut_site in mut_sites:
                     if mut_site in recurMutSites:
@@ -630,7 +650,7 @@ def recombination(pool, rec_rate):
 '''
 
 # produce gametes
-def wright_fisher(pop, genome_len, num_gametes, pop_size, mut_rate, rec_rate):
+def wright_fisher(pop, mut_rate, rec_rate):
     '''
         A function that produces gametes and a new population for next
         generation.
@@ -649,11 +669,12 @@ def wright_fisher(pop, genome_len, num_gametes, pop_size, mut_rate, rec_rate):
             gamete_next (list): A new population list of dictionaries
                                 representing individuals.
     '''
-    gamete_pool = reproduction(pop, num_gametes, mut_rate)
+    gamete_pool = reproduction(pop, mut_rate)
     if rec_rate > 0:
         gamete_pool = recombination(gamete_pool, rec_rate)
-    gamete_next = rng.choice(gamete_pool, pop_size, replace=False)
-    return gamete_next
+    return gamete_pool
+#    gamete_next = rng.choice(gamete_pool, pop_size, replace=False)
+#    return gamete_next
 
 def outputVariant(gen, population, sample_size, fhInd, fhLine, fhSite, seqs, samp_sites):
     '''
@@ -679,7 +700,8 @@ def outputVariant(gen, population, sample_size, fhInd, fhLine, fhSite, seqs, sam
 
         fhInd.write(tagRun  + "\t" + str(gen) + "\t" + samId + "\t" + str(round(population_sample[i]['fitness'],4)) + "\t" + str(population_sample[i]['igs']) + "\t" + str(population_sample[i]['synon']) + "\t" + str(population_sample[i]['missense']) + "\n")
 
-        fhLine.write(tagRun  + "\t" + str(gen) + "\t"  + samId + "\t" + lineage_info  + "\n")
+        if gen == generations:
+            fhLine.write(tagRun  + "\t" + str(gen) + "\t"  + samId + "\t" + lineage_info  + "\n")
 
         sites = []
         for site in population_sample[i]['sites']:
@@ -706,7 +728,7 @@ def outputVariant(gen, population, sample_size, fhInd, fhLine, fhSite, seqs, sam
         fhSite.write(tagRun  + "\t" + str(gen) + "\t" + samId + "\t" + site_info + "\n")
 
 
-def simulation(num_gen, pop_size, num_gametes, mut_rate, rec_rate, sample_size):
+def simulation(num_gen, pop_size, mut_rate, rec_rate, sample_size):
     '''
         A main function that performs the Wright-Fisher simulation.
 
@@ -731,8 +753,8 @@ def simulation(num_gen, pop_size, num_gametes, mut_rate, rec_rate, sample_size):
 #    logging.info("Evolution model: -w %s (fitness discount for a missense mutation)", args.fitness)
     logging.info("Genome length: %s nt", genome_len)
     logging.info("Population size: -p %s individuals", pop_size)
-    logging.info("Sample size: -p %s individuals per generation", args.sample)
-    logging.info("Gamete size: -n %s per individual", num_gametes)
+    logging.info("Sample size: -s %s individuals per generation", args.sample)
+#    logging.info("Gamete size: -n %s per individual", num_gametes)
     logging.info("Mutation rate: -m %s per genome per generation", mutation_rate)
     logging.info("Recombination rate: -r %s per genome per generation", rec_rate)
     logging.info("Total generations: -g %s", num_gen)
@@ -753,7 +775,7 @@ def simulation(num_gen, pop_size, num_gametes, mut_rate, rec_rate, sample_size):
     seq_samples = []
     var_sites = {} # unique mutated sites in samples
     for generation in range(1, num_gen + 1):
-        pop = wright_fisher(pop, genome_len, num_gametes, pop_size, mut_rate, rec_rate)
+        pop = wright_fisher(pop, mut_rate, rec_rate)
         outputVariant(generation, pop, sample_size, hapOut, lineageOut, siteOut, seq_samples, var_sites)
         bar.next()  # Progress
 
@@ -800,7 +822,7 @@ def simulation(num_gen, pop_size, num_gametes, mut_rate, rec_rate, sample_size):
 logging.info("Start timestamp: %s", datetime.datetime.now())
 generations = args.generations
 pop_size = args.population
-num_gametes = args.gametes
+#num_gametes = args.gametes
 sample_size = args.sample
 mutation_rate = args.mutation
 recombination_rate = args.recombination
@@ -814,7 +836,7 @@ sample_gene_sites = {} # record unique sample sites in genes
 simulation(
     generations,
     pop_size,
-    num_gametes,
+#    num_gametes,
     mutation_rate,
     recombination_rate,
     sample_size
