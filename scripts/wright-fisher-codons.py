@@ -503,8 +503,11 @@ def mutate(individual, mutation_sites):
         individual = fitness(individual, site, new_base)
     return individual
 
-def reproduction(pop, mut_rate):
+def reproduction2(pop, mut_rate):
     '''
+        Produced reduced total mutations (and missense) in neut model. Coalescent trees are also mis-shaped.
+        Round errors for the fitness function?
+
         A function that performs reproduction with mutation
         in a population. Lineage IDs and mutated sites are appended
         to the individual dictionary objects.
@@ -653,7 +656,7 @@ def wright_fisher(pop, mut_rate, rec_rate):
             gamete_next (list): A new population list of dictionaries
                                 representing individuals.
     '''
-    gamete_pool = reproduction(pop, mut_rate)
+    gamete_pool = reproduction2(pop, mut_rate)
     if rec_rate > 0:
         gamete_pool = recombination(gamete_pool, rec_rate)
     return gamete_pool
