@@ -708,8 +708,10 @@ def outputVariant(gen, population, sample_size, fhInd, fhLine, fhSite, seqs, sam
             pos = site['mut_site']
             alt = site['nt_post']
             con = site['conseq']
+            if con == 'NA':
+                con = 'igs'
             snpID = str(pos) + "_" + alt
-            sites.append(snpID + '_' + con[0:3]) # 'NA', 'syn', 'mis'
+            sites.append(snpID + '_' + con[0:3]) # 'igs', 'syn', 'mis'
 
             if snpID in samp_sites:
                 samp_sites[snpID]['count'] += 1

@@ -21,19 +21,19 @@ parser = argparse.ArgumentParser(
 parser.add_argument('-t', '--topmost', type = int, nargs = '?', const = 1000,
                     help = 'list countries with at least (default 1000) sequenced genomes')
 
-parser.add_argument('-c', '--country', 
+parser.add_argument('-c', '--country',
                     help = 'Country name. Quote for names containing blanks, e.g., "South Africa"')
 
 parser.add_argument('-f', '--freq_cut', type = float,
                     help = 'provide minimum variant frequency (default 0.005)', default = 0.005)
 
-parser.add_argument('-l', '--locus', 
+parser.add_argument('-l', '--locus',
                     help = 'select a locus')
 
 parser.add_argument('-m', '--missense', action = 'store_true',
                     help = 'missense SNPs only')
 
-parser.add_argument('-r', '--r4s', 
+parser.add_argument('-r', '--r4s',
                     help = 'add rate4site output to var output (require --snp and --locus options)')
 
 parser.add_argument('-s', '--snp', action = 'store_true',
@@ -44,7 +44,7 @@ parser.add_argument('-p', '--per_month', type = int, default = 100,
 
 args = parser.parse_args()
 
-freqCut = args.freq_cut    
+freqCut = args.freq_cut
 refEPI = 'ISL_406030'
 batEPI = 'ISL_402131'
 logging.basicConfig(level = logging.DEBUG)
@@ -61,7 +61,7 @@ insInfo = {}
 def countByCountry():
     logging.info("Count isolates for topmost countries ...")
     cur.execute("select country, count(*) as count_total from vhuman_anno where acc != %s and acc != %s group by country having count(*) > %s order by count_total desc", [refEPI, batEPI, args.topmost])
-    ctryData = cur.fetchall()            
+    ctryData = cur.fetchall()
     for ctry in ctryData:
         print(ctry[0] + "\t" + str(ctry[1]))
 
@@ -90,8 +90,8 @@ def get_variant(changeList):
             insList.append(change)
     logging.info("Variants read: n = %s", varCt)
 
-    # collect SNPs 
-    par_snp = { 'l': tuple(snpList) }  
+    # collect SNPs
+    par_snp = { 'l': tuple(snpList) }
     cur.execute("select * from cv_snp where concat(alt, site) in %(l)s", par_snp) # PK: site + alt
     snp = cur.fetchall()
     for dataSNP in snp:
@@ -120,13 +120,13 @@ def get_variant(changeList):
             continue
 
         aaCode = dataSNP[4] + str(int((dataSNP[7]-1)/3)+1) if isCoding else 'NA'
-            
+
         snpInfo[change] = {
             'site': site,
             'varID': "cv" + "-" + change,
             'vartype': 'SNP',
             'altNT': dataSNP[1], # could be multiple altNTs
-            'refNT': dataSNP[2][dataSNP[3]-1] if isCoding else dataSNP[2], 
+            'refNT': dataSNP[2][dataSNP[3]-1] if isCoding else dataSNP[2],
             'locus': dataSNP[6],
             'codonRef': dataSNP[2] if isCoding else 'NA',
             'codonPos': str(dataSNP[3]) if isCoding else 'NA',
@@ -145,13 +145,13 @@ def get_variant(changeList):
     delCt = 0
     par_del = { 'l': tuple(delList) }
     if len(delList):
-        cur.execute("select * from cv_del where del in %(l)s", par_del) 
+        cur.execute("select * from cv_del where del in %(l)s", par_del)
         DEL = cur.fetchall()
         for dataDEL in DEL:
             delCt += 1
             change = dataDEL[0]
             site = int(change.split("-")[0])
-            
+
             if args.locus and dataDEL[1] != args.locus:
                 continue
 
@@ -159,7 +159,7 @@ def get_variant(changeList):
                 'site': site - 1,
                 'vartype': 'DEL',
                 'varID': "cv" + "-" + change,
-                'altNT': 'N', # A 
+                'altNT': 'N', # A
                 'refNT': 'N' + dataDEL[3], # ATTTTTTTTTTTTTTTTT
                 'locus': dataDEL[1],
                 'codonRef': 'NA',
@@ -171,11 +171,11 @@ def get_variant(changeList):
                 'aaID': 'NA',
                 'r4s': 'NA'
             }
-            
-    insCt = 0    
-    par_ins = { 'l': tuple(insList) } 
+
+    insCt = 0
+    par_ins = { 'l': tuple(insList) }
     if len(insList):
-        cur.execute("select * from cv_ins where ins in %(l)s", par_ins) 
+        cur.execute("select * from cv_ins where ins in %(l)s", par_ins)
         INS = cur.fetchall()
         for dataINS in INS:
             insCt += 1
@@ -192,8 +192,8 @@ def get_variant(changeList):
                 'site': site - 1,
                 'vartype': 'INS',
                 'varID': "cv" + "-" + change,
-                'altNT': refBase + alt, 
-                'refNT': refBase, 
+                'altNT': refBase + alt,
+                'refNT': refBase,
                 'locus': dataINS[1],
                 'codonRef': 'NA',
                 'codonPos': 'NA',
@@ -247,7 +247,7 @@ def main():
 ############################################
     logging.info("getting all samples of %s from the database...", args.country)
     cur.execute("select acc, col_date, country, state, area_id, pangolin_lineage from vhuman_anno_weigang where acc != %s and acc != %s and country = %s order by col_date", [refEPI, batEPI, args.country])
-    accData = cur.fetchall()            
+    accData = cur.fetchall()
     isoPerMonth = {}
     isoData = {}
     panLineage = {}
@@ -259,7 +259,7 @@ def main():
             iso[3] = 'NA'
 
         iso[1] = re.sub(r"^(\d{4}-\d{2})$", r"\1-15", iso[1])
-            #    colDate = datetime.datetime.strptime(iso[1], "%Y-%m-%d")
+        # colDate = datetime.datetime.strptime(iso[1], "%Y-%m-%d")
 
         yearMonth = re.sub(r"-\d{2}$", r"", iso[1])
         if re.match(r"2019", yearMonth):
@@ -306,11 +306,11 @@ def main():
     l = tuple(isoEPIs)
     params = {'a': l}
     cur.execute('select acc, chg from acc_hap a, hap_chg b where a.hid = b.hid and acc in %(a)s', params)
-    acc_lines = cur.fetchall() 
+    acc_lines = cur.fetchall()
 
     #    hidMajor = {}
     #    cur.execute("select * from hap_lineage")
-    #    lineage_lines = cur.fetchall() 
+    #    lineage_lines = cur.fetchall()
     #    for line in lineage_lines:
     #        hidMajor[line[0]] = line[1]
     total_count = {}
@@ -322,12 +322,12 @@ def main():
             allSamples[chg].append(acc)
         else:
             allSamples[chg] = [acc]
- 
+
         if acc in total_count:
             total_count[acc] += 1
         else:
             total_count[acc] = 1
-    
+
         changes = list(allSamples.keys())
     logging.info("total genetic changes: n = %s", len(changes))
 
@@ -344,7 +344,7 @@ def main():
         freq = float(len(iso))/float(len(isoEPIs))
         varFreq[change] = freq
         varAccCt[change] = len(iso)
- 
+
     get_variant(changes)
 
     for change in changes:
@@ -366,16 +366,17 @@ def main():
     for iso in isoEPIs:
         if iso in var_count: # hid = 1 is not collected
             isoData[iso]['var_ct'] = var_count[iso]
-        acc_output.write(iso + "\t" + 
-                         isoData[iso]['col_date'] + "\t" + 
-                         isoData[iso]['country'] + "\t" + 
-                         isoData[iso]['state'] + "\t" + 
-                         isoData[iso]['area'] + "\t" + 
+        pan = panLineage[iso] if iso in panLineage else 'NA'
+        acc_output.write(iso + "\t" +
+                         isoData[iso]['col_date'] + "\t" +
+                         isoData[iso]['country'] + "\t" +
+                         isoData[iso]['state'] + "\t" +
+                         isoData[iso]['area'] + "\t" +
                          str(isoData[iso]['var_ct']['igs']) + "\t" +
                          str(isoData[iso]['var_ct']['syn']) + "\t" +
                          str(isoData[iso]['var_ct']['mis']) + "\t" +
-                         str(total_count[iso]) + "\t" +
-                         panLineage[iso] + "\n"
+                         str(total_count[iso]) + "\t" + pan + '\n'
+#                         panLineage[iso] + "\n"
         )
     acc_output.close()
 
@@ -399,7 +400,7 @@ if args.r4s is not None:
                     refAA = lineMatch.group(2)
                     rate = lineMatch.group(3)
                     rate4site[refAA + aaSite] = rate
-    
+
 if args.topmost is not None:
     countByCountry()
 else:
@@ -409,5 +410,3 @@ else:
         main()
 
 sys.exit()
-
-
