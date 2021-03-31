@@ -10,6 +10,9 @@ import pandas as pd
 from progress.bar import Bar
 import datetime
 import re
+from numpy.random import default_rng
+
+rng = default_rng() # Random number generator
 
 # Initialize parser
 parser = argparse.ArgumentParser(
@@ -25,11 +28,8 @@ parser.add_argument('filename',
 parser.add_argument('-p', '--pi', action = 'store_true',
                     help = 'print average pairwise nucleotide diffs per generation. Required file: sites.tsv')
 
-parser.add_argument('-t', '--temporal',
+parser.add_argument('-t', '--temporal', type = int, default = 1,
                     help = 'print nucleotide diffs to a reference sample (default: a randome sequence in generation 1). Required: sites.tsv')
-
-parser.add_argument('-g', '--gen', type = int, default = 1,
-                    help = 'pick a sample as reference at a generation (default 1)')
 
 parser.add_argument('-c', '--coal',
                     help='Output: a coalescence tree. Required: lineages.tsv')
@@ -166,11 +166,47 @@ def rate4site():
 logging.info("Start timestamp: %s", datetime.datetime.now())
 
 sample_sites = []
-if args.pi is True:
+if args.pi is True or args.trace is not None or args.temporal is not None:
     if re.search("sites", args.filename):
         sample_sites = parse_site_file(fileName)
     else:
-        logging.info("--pi needs a site.tsv file as input")
+        logging.info("--pi, --trace, --temporal all need a site.tsv file as input")
+
+if args.temporal is not None:
+    genRef = args.temporal
+    genSample = [ s for s in sample_sites if s['generation'] == genRef ][0]
+    #print(genSample)
+    pickRef = rng.choice(genSample['all_sites'])
+    #print(pickRef)
+    # pick one ind from each generation
+    for sample in sample_sites:
+        gen = sample['generation']
+        #pickInd = rng.choice(sample['all_sites']) # pick one ind
+        #print(pickRef, "\t", pickInd)
+        for pickInd in sample['all_sites']: # all samples
+            diff_pair = len(set(pickRef) | set(pickInd)) - len(set(pickRef) & set(pickInd))
+            print(genRef, "\t", gen, "\t", diff_pair)
+
+if args.trace is not None:
+    # read site info in var.tsv format
+    snps = []
+    with open(args.trace, "r") as fh:
+        lines = fh.readlines()
+        for line in lines:
+            data = line.split()
+            snps.append(data[2])
+
+    for snp in snps:
+        for gen_sample in sample_sites:
+            snpCt = 0
+            gen = gen_sample['generation']
+            misSites = gen_sample['mis_sites'] # all samples
+            for site_sample in misSites: # one sample
+                for site in site_sample: # one site
+                    snpId = re.sub(r"_.{2,3}$", r"", site)
+                    if snpId == snp:
+                        snpCt += 1
+            print(snp, "\t", gen, "\t", snpCt)
 
 if args.pi is True:
     for sample in sample_sites:
