@@ -28,7 +28,7 @@ parser.add_argument('filename',
 parser.add_argument('-p', '--pi', action = 'store_true',
                     help = 'print average pairwise nucleotide diffs per generation. Required file: sites.tsv')
 
-parser.add_argument('-t', '--temporal', type = int, default = 1,
+parser.add_argument('-t', '--temporal', type = int,
                     help = 'print nucleotide diffs to a reference sample (default: a randome sequence in generation 1). Required: sites.tsv')
 
 parser.add_argument('-c', '--coal',
@@ -169,14 +169,20 @@ sample_sites = []
 if args.pi is True or args.trace is not None or args.temporal is not None:
     if re.search("sites", args.filename):
         sample_sites = parse_site_file(fileName)
+        logging.info("sites file parsed")
     else:
         logging.info("--pi, --trace, --temporal all need a site.tsv file as input")
 
 if args.temporal is not None:
     genRef = args.temporal
     genSample = [ s for s in sample_sites if s['generation'] == genRef ][0]
-    #print(genSample)
+    # print(genSample)
+    countSite = len(genSample['all_sites'])
+    if countSite < 1:
+        logging.info("no mutations in generation %s. Pick another generation", genRef)
+        sys.exit()
     pickRef = rng.choice(genSample['all_sites'])
+
     #print(pickRef)
     # pick one ind from each generation
     for sample in sample_sites:
@@ -193,8 +199,9 @@ if args.trace is not None:
     with open(args.trace, "r") as fh:
         lines = fh.readlines()
         for line in lines:
-            data = line.split()
-            snps.append(data[2])
+            if line.strip(): # line not empty
+                data = line.split()
+                snps.append(data[2])
 
     for snp in snps:
         for gen_sample in sample_sites:
