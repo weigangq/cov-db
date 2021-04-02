@@ -1,0 +1,17 @@
+INFO:root:Start timestamp: 2021-03-21 15:51:16.412126
+INFO:root:Simulate CoV genome evolution under Wright-Fisher model
+INFO:root:Genome file: -b ../cov-db/test-files/NC_045512.2.gb nt
+INFO:root:Genome length: 29903 nt
+INFO:root:Population size: -p 200 individuals
+INFO:root:Sample size: -s 20 individuals per generation
+INFO:root:Mutation rate: -m 0.1 per genome per generation
+INFO:root:Recombination rate: -r 0 per genome per generation
+INFO:root:Total generations: -g 500
+INFO:root:Negative selection against missense: -u 0.5 probability with -x 0.95 fitness cost
+INFO:root:Positive selection for missense: -v 0 probability with -y 1.05 fitness gain
+INFO:root:Neutral missense: 0.5 probability with fitness of 1
+INFO:root:Mutation counts per sample written to file bkg-samples.tsv
+INFO:root:Lineage info per sample written to file bkg-lineages.tsv
+INFO:root:Mutated sites per sample written to file bkg-vars.tsv
+INFO:root:Mutation counts per gene written to file bkg-genes.tsv
+INFO:root:End timestamp: 2021-03-21 16:32:54.961626
