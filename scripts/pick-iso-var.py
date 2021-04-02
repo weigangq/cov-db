@@ -367,6 +367,7 @@ def main():
         if iso in var_count: # hid = 1 is not collected
             isoData[iso]['var_ct'] = var_count[iso]
         pan = panLineage[iso] if iso in panLineage else 'NA'
+        ct = total_count[iso] if iso in total_count else 0 # hid = 1 no diff
         acc_output.write(iso + "\t" +
                          isoData[iso]['col_date'] + "\t" +
                          isoData[iso]['country'] + "\t" +
@@ -375,7 +376,7 @@ def main():
                          str(isoData[iso]['var_ct']['igs']) + "\t" +
                          str(isoData[iso]['var_ct']['syn']) + "\t" +
                          str(isoData[iso]['var_ct']['mis']) + "\t" +
-                         str(total_count[iso]) + "\t" + pan + '\n'
+                         str(ct) + "\t" + pan + '\n'
 #                         panLineage[iso] + "\n"
         )
     acc_output.close()
