@@ -42,18 +42,22 @@ parser.add_argument('-b', '--genbank',
 
 parser.add_argument('-t', '--tag', default = 'test',
                     help='prefix for output files (default "out")')
-parser.add_argument('-s', '--sample', type=int, default=10,
-                    help='Sample size (default = 10)')
+
+parser.add_argument('-s', '--sample', type=int, default = 20,
+                    help='Sample size (default = 20)')
 
 parser.add_argument('-f', '--fasta', action = 'store_true',
                     help='output sampled genome seqs (caution: large file size)')
 
-# Arguments for basic evolution parameters
-parser.add_argument('-g', '--generations', type=int, default=200,
-                    help='Number of generations (default = 100)')
+parser.add_argument('-q', '--proteins', action = 'store_true',
+                    help='print protein info and quit')
 
-parser.add_argument('-p', '--population', type=int, default=100,
-                    help='Population size (default = 100)')
+# Arguments for basic evolution parameters
+parser.add_argument('-g', '--generations', type=int, default=500,
+                    help='Number of generations (default = 500)')
+
+parser.add_argument('-p', '--population', type=int, default=200,
+                    help='Population size (default = 200)')
 
 #parser.add_argument('-n', '--gametes', type=int, default=20,
 #                    help='Number of gametes produced by each genome (default = 20)')
@@ -833,6 +837,12 @@ recombination_rate = args.recombination
 
 recurMutSites = {}
 cdsObj = gene_locations(ref_gb)
+
+if args.proteins:
+    for id in cdsObj:
+        print(id, "\t", cdsObj[id]['product'], "\t", cdsObj[id]['location'])
+    sys.exit()
+    
 posInfo = position_info(ref_gb)
 
 sample_gene_sites = {} # record unique sample sites in genes
