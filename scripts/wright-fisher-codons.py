@@ -838,11 +838,21 @@ recombination_rate = args.recombination
 recurMutSites = {}
 cdsObj = gene_locations(ref_gb)
 
+# prints CDS locations, 1-based: add 1 to start and 0 to end:
 if args.proteins:
     for id in cdsObj:
-        print(id, "\t", cdsObj[id]['product'], "\t", cdsObj[id]['location'])
+        locPart = cdsObj[id]['location'].parts
+        print(id, "\t", cdsObj[id]['product'], end="\t")
+        if len(locPart) > 1:
+            pairs = []
+            for par in locPart:
+                pairs.append(str(par.start+1) + ", " + str(par.end))
+            print("; ".join(pairs))
+        else:
+            par = locPart[0]
+            print(str(par.start + 1) + ", " + str(par.end))
     sys.exit()
-    
+
 posInfo = position_info(ref_gb)
 
 sample_gene_sites = {} # record unique sample sites in genes
