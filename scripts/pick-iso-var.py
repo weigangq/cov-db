@@ -246,17 +246,31 @@ def main():
 # get all samples of a country (except the ref and bat)
 ############################################
     logging.info("getting all samples of %s from the database...", args.country)
-    cur.execute("select acc, col_date, country, state, area_id, pangolin_lineage from vhuman_anno_weigang where acc != %s and acc != %s and country = %s order by col_date", [refEPI, batEPI, args.country])
+
+
+    hidLineage = {}
+    cur.execute("select * from hap_lineage")
+    linData = cur.fetchall()
+    for hid in linData: # not all hid has lineages
+        hidLineage[hid[0]] = hid[1]
+    #print(hidLineage[69])
+
+    cur.execute("select acc, col_date, country, state, area_id, hid from vhuman_anno where acc != %s and acc != %s and country = %s order by col_date", [refEPI, batEPI, args.country])
     accData = cur.fetchall()
     isoPerMonth = {}
     isoData = {}
     panLineage = {}
+
     for iso in accData:
         iso = list(iso) # make it list, since tuple is not editable
-        panLineage[iso[0]] = iso[5] # get hid for each acc
+        #panLineage[iso[0]] = iso[5] # get hid for each acc
+        #if iso[3] is None:
+        #    iso[3] = 'NA'
 
-        if iso[3] is None:
-            iso[3] = 'NA'
+        if iso[5] in hidLineage:
+            panLineage[iso[0]] = hidLineage[iso[5]]
+        else:
+            panLineage[iso[0]] = 'NA'
 
         iso[1] = re.sub(r"^(\d{4}-\d{2})$", r"\1-15", iso[1])
         # colDate = datetime.datetime.strptime(iso[1], "%Y-%m-%d")
@@ -272,11 +286,11 @@ def main():
 
         isoData[iso[0]] = { 'col_date': iso[1],
                             'country': iso[2],
-                            'state': iso[3],
+                            'state': iso[3] if iso[3] is not None else 'NA',
                             'area': "Area_" + str(iso[4]),
                             'var_ct': 0 # initialize
                         }
-
+    #print(panLineage)
 ###########################
 # sample isolates evenly among months
 ###############################
@@ -305,7 +319,7 @@ def main():
     logging.info("getting all genetic changes: SNPs and indels...")
     l = tuple(isoEPIs)
     params = {'a': l}
-    cur.execute('select acc, chg from acc_hap a, hap_chg b where a.hid = b.hid and acc in %(a)s', params)
+    cur.execute('select acc, chg from human_anno a, hap_chg b where a.hid = b.hid and acc in %(a)s', params)
     acc_lines = cur.fetchall()
 
     #    hidMajor = {}
@@ -360,14 +374,15 @@ def main():
             else:
                 var_count[acc]['igs'] += 1
 
-
 # write iso file
     acc_output = open('iso_%s.tsv'% ctryName, 'w')
     for iso in isoEPIs:
-        if iso in var_count: # hid = 1 is not collected
-            isoData[iso]['var_ct'] = var_count[iso]
+        #if iso in var_count: # hid = 1 is not collected
+        isoData[iso]['var_ct'] = var_count[iso]
         pan = panLineage[iso] if iso in panLineage else 'NA'
         ct = total_count[iso] if iso in total_count else 0 # hid = 1 no diff
+        #print(isoData[iso], "\t", pan, "\t", ct)
+        #continue
         acc_output.write(iso + "\t" +
                          isoData[iso]['col_date'] + "\t" +
                          isoData[iso]['country'] + "\t" +
@@ -375,8 +390,8 @@ def main():
                          isoData[iso]['area'] + "\t" +
                          str(isoData[iso]['var_ct']['igs']) + "\t" +
                          str(isoData[iso]['var_ct']['syn']) + "\t" +
-                         str(isoData[iso]['var_ct']['mis']) + "\t" +
-                         str(ct) + "\t" + pan + '\n'
+                         str(isoData[iso]['var_ct']['mis']) + "\t"  +
+                         str(ct) + "\t" + pan + "\n"
 #                         panLineage[iso] + "\n"
         )
     acc_output.close()
