@@ -59,8 +59,8 @@ parser.add_argument('-g', '--generations', type=int, default=500,
 parser.add_argument('-p', '--population', type=int, default=200,
                     help='Population size (default = 200)')
 
-#parser.add_argument('-n', '--gametes', type=int, default=20,
-#                    help='Number of gametes produced by each genome (default = 20)')
+parser.add_argument('-Q', '--qmatrix', action = "store_true",
+                    help='print the internally defined, empirically derived mutation prob matrix & quit')
 
 parser.add_argument('-m', '--mutation', type=float, default=0.1,
                     help='Mutation rate per genome per generation (default = 0.1)')
@@ -97,6 +97,22 @@ logging.basicConfig(filename = "%s-run.log" % tagRun,
 
 if args.genbank is None:
     logging.info("Need a Genbank file as --genbank NC_045512.2.gb")
+    sys.exit()
+
+# based on empirical n=1180 mutations counts from 7 countries
+qmatrix = {
+    'A': { "C": 0.1083, "G": 0.7000, "T": 0.1917 },
+    'C': { "A": 0.0475, "G": 0.0033, "T": 0.9492 },
+    'G': { "A": 0.2102, "C": 0.0931, "T": 0.6967 },
+    'T': { "A": 0.1025, "C": 0.795, "G": 0.1025 }
+    }
+
+logging.info("Using mutation prob matrix: %s", qmatrix)
+
+if args.qmatrix:
+    for src in qmatrix:
+        for des in qmatrix[src]:
+            print(src, "=>", des, qmatrix[src][des])
     sys.exit()
 
 ref_gb = SeqIO.read(args.genbank, 'genbank')
@@ -492,6 +508,11 @@ def mutate(individual, mutation_sites):
     for site in mutation_sites:
         site = int(site)
         mutated_base = sequence[site]
+        probs = qmatrix[mutated_base]
+        possibleBases = list(probs.keys())
+        probBases = list(probs.values())
+        sequence[site] = rng.choice(possibleBases, p = probBases)
+        '''
         if mutated_base == 'A':
             sequence[site] = rng.choice(['C', 'G', 'T'], p=[0.15, 0.65, 0.20])
         elif mutated_base == 'C':
@@ -500,6 +521,7 @@ def mutate(individual, mutation_sites):
             sequence[site] = rng.choice(['A', 'C', 'G'], p=[0.15, 0.70, 0.15])
         else:
             sequence[site] = rng.choice(['A', 'C', 'T'], p=[0.80, 0.05, 0.15])
+        '''
 
         new_base = sequence[site]
         individual['seq'] = sequence # mutated seq, cumulative
@@ -757,7 +779,7 @@ def simulation(num_gen, pop_size, mut_rate, rec_rate, sample_size):
     '''
     genome_len = len(genomeSeq)
     logging.info("Simulate CoV genome evolution under Wright-Fisher model")
-    logging.info("Genome file: -b %s nt", args.genbank)
+    logging.info("Genome file: -b %s", args.genbank)
 #    logging.info("Evolution model: -w %s (fitness discount for a missense mutation)", args.fitness)
     logging.info("Genome length: %s nt", genome_len)
     logging.info("Population size: -p %s individuals", pop_size)
@@ -768,7 +790,7 @@ def simulation(num_gen, pop_size, mut_rate, rec_rate, sample_size):
     logging.info("Total generations: -g %s", num_gen)
     logging.info("Negative selection against missense: -u %s probability with -x %s fitness cost", probNeg, fitNeg)
     logging.info("Positive selection for missense: -v %s probability with -y %s fitness gain", probPos, fitPos)
-    logging.info("Neutral missense: %s probability with fitness of 1", 1 - probNeg - probPos)
+    logging.info("Neutral missense: probability of %s with fitness of 1", 1 - probNeg - probPos)
 
     # output samples
     pop = initialize(pop_size)
