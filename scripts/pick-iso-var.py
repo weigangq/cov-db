@@ -92,7 +92,7 @@ def get_variant(changeList):
 
     # collect SNPs
     par_snp = { 'l': tuple(snpList) }
-    cur.execute("select * from cv_snp where concat(alt, site) in %(l)s", par_snp) # PK: site + alt
+    cur.execute("select * from var_snp where concat(alt, site) in %(l)s", par_snp) # PK: site + alt
     snp = cur.fetchall()
     for dataSNP in snp:
         site = dataSNP[0]
@@ -145,7 +145,7 @@ def get_variant(changeList):
     delCt = 0
     par_del = { 'l': tuple(delList) }
     if len(delList):
-        cur.execute("select * from cv_del where del in %(l)s", par_del)
+        cur.execute("select * from var_del where del in %(l)s", par_del)
         DEL = cur.fetchall()
         for dataDEL in DEL:
             delCt += 1
@@ -175,7 +175,7 @@ def get_variant(changeList):
     insCt = 0
     par_ins = { 'l': tuple(insList) }
     if len(insList):
-        cur.execute("select * from cv_ins where ins in %(l)s", par_ins)
+        cur.execute("select * from var_ins where ins in %(l)s", par_ins)
         INS = cur.fetchall()
         for dataINS in INS:
             insCt += 1
@@ -319,7 +319,7 @@ def main():
     logging.info("getting all genetic changes: SNPs and indels...")
     l = tuple(isoEPIs)
     params = {'a': l}
-    cur.execute('select acc, chg from human_anno a, hap_chg b where a.hid = b.hid and acc in %(a)s', params)
+    cur.execute('select acc, chg from human_anno a, hap_var b where a.hid = b.hid and acc in %(a)s', params)
     acc_lines = cur.fetchall()
 
     #    hidMajor = {}

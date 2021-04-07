@@ -38,7 +38,10 @@ parser.add_argument('-r', '--rate4site',
                     help='Map per site rates to SNPs. Required: vars.tsv')
 
 parser.add_argument('-a', '--trace',
-                    help='Trace freq of a given SNP Required: sites.tsv')
+                    help='Trace freq of a given SNP id. Required: sites.tsv')
+
+parser.add_argument('-g', '--gene', type = int, default = 100,
+                    help='Trace var freq with at least 100 (1%) presence. Required: vars.tsv')
 
 ######################################
 # Program settings
@@ -56,6 +59,9 @@ fileName = args.filename
 ################################
 # Define all functions
 ##################################
+
+def parse_var_file(fname):
+
 
 def parse_site_file(fname):
     ### load the site file, parse it
