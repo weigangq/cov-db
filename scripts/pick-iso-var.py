@@ -21,6 +21,9 @@ parser = argparse.ArgumentParser(
 parser.add_argument('-t', '--topmost', type = int, nargs = '?', const = 1000,
                     help = 'list countries with at least (default 1000) sequenced genomes')
 
+parser.add_argument('-a', '--area', type = int,
+                    help = 'Continent id: 1 for N.American, 2 for S.America, 3 for Europe, 4 for Asia, 5 for Africa, and 6 for Oceania')
+
 parser.add_argument('-c', '--country',
                     help = 'Country name. Quote for names containing blanks, e.g., "South Africa"')
 
@@ -56,7 +59,7 @@ cur = conn.cursor()
 snpInfo = {}
 delInfo = {}
 insInfo = {}
-
+varType = {}
 
 def countByCountry():
     logging.info("Count isolates for topmost countries ...")
@@ -69,7 +72,7 @@ def countByCountry():
 ############################################
 # define a function
 ############################################
-def get_variant(changeList):
+def get_variant(changeList, geoID):
     varChange = {} # only the high frequency vars
     varCt = 0
     multCt = 0
@@ -84,10 +87,14 @@ def get_variant(changeList):
         varChange[change] = 1
         if re.match("[ATCG]\d+", change): # a SNP, combine multi-allelic
             snpList.append(change)
+            varType[change] = 'snp'
         elif re.search("\d+-\d+", change): # deletion, e.g., "4560-45"
             delList.append(change)
+            varType[change] = 'del'
         else: # insertion, e.g., "4560_AGT"
             insList.append(change)
+            varType[change] = 'ins'
+
     logging.info("Variants read: n = %s", varCt)
 
     # collect SNPs
@@ -214,13 +221,13 @@ def get_variant(changeList):
     delDict = dict(sorted(delInfo.items(), key=lambda item: item[1]['site']))
     insDict = dict(sorted(insInfo.items(), key=lambda item: item[1]['site']))
 
-    varOut = open('var_%s.tsv'% ctryName, 'w')
+    varOut = open('var_%s.tsv'% geoID, 'w')
     logging.info("exporting genetic changes with freq >= %s ...", freqCut)
     for site in snpDict.keys(): # str key
         if varFreq[site] < freqCut:
             lowFreq += 1
             continue
-        varOut.write(snpInfo[site]['vartype'] + "\t"+ str(snpInfo[site]['site']) + "\t" + snpInfo[site]['varID'] + "\t" + snpInfo[site]['refNT'] + "\t" + snpInfo[site]['locus'] + "\t" + snpInfo[site]['codonRef'] + "\t" + snpInfo[site]['codonPos'] + "\t" + snpInfo[site]['locPos'] + "\t" + snpInfo[site]['altNT'] + "\t" + snpInfo[site]['conseq'] + "\t"  + snpInfo[site]['freq'] + "\t" + snpInfo[site]['count'] + "\t" + snpInfo[site]['aaID'] + "\t" + snpInfo[site]['r4s'] + "\t" + ctryName + "\n")
+        varOut.write(snpInfo[site]['vartype'] + "\t"+ str(snpInfo[site]['site']) + "\t" + snpInfo[site]['varID'] + "\t" + snpInfo[site]['refNT'] + "\t" + snpInfo[site]['locus'] + "\t" + snpInfo[site]['codonRef'] + "\t" + snpInfo[site]['codonPos'] + "\t" + snpInfo[site]['locPos'] + "\t" + snpInfo[site]['altNT'] + "\t" + snpInfo[site]['conseq'] + "\t"  + snpInfo[site]['freq'] + "\t" + snpInfo[site]['count'] + "\t" + snpInfo[site]['aaID'] + "\t" + snpInfo[site]['r4s'] + "\t" + geoID + "\n")
 
     if args.missense or args.snp:
         return
@@ -230,18 +237,18 @@ def get_variant(changeList):
             if varFreq[site] < freqCut:
                 lowFreq += 1
                 continue
-        varOut.write(delInfo[site]['vartype'] + "\t"+ str(delInfo[site]['site']) + "\t" + delInfo[site]['varID'] + "\t" + delInfo[site]['refNT'] + "\t" + delInfo[site]['locus'] + "\t" + delInfo[site]['codonRef'] + "\t" + delInfo[site]['codonPos'] + "\t" + delInfo[site]['locPos'] + "\t" + delInfo[site]['altNT'] + "\t" + delInfo[site]['conseq'] + "\t"  + delInfo[site]['freq'] + "\t" + delInfo[site]['count'] + "\t" + delInfo[site]['aaID'] + "\t" + delInfo[site]['r4s'] + ctryName + "\n")
+        varOut.write(delInfo[site]['vartype'] + "\t"+ str(delInfo[site]['site']) + "\t" + delInfo[site]['varID'] + "\t" + delInfo[site]['refNT'] + "\t" + delInfo[site]['locus'] + "\t" + delInfo[site]['codonRef'] + "\t" + delInfo[site]['codonPos'] + "\t" + delInfo[site]['locPos'] + "\t" + delInfo[site]['altNT'] + "\t" + delInfo[site]['conseq'] + "\t"  + delInfo[site]['freq'] + "\t" + delInfo[site]['count'] + "\t" + delInfo[site]['aaID'] + "\t" + delInfo[site]['r4s'] + geoID + "\n")
 
     for site in insDict.keys(): # str key!!
         for site in insDict.keys(): # str key
             if varFreq[site] < freqCut:
                 lowFreq += 1
                 continue
-        varOut.write(insInfo[site]['vartype'] + "\t"+ str(insInfo[site]['site']) + "\t" + insInfo[site]['varID'] + "\t" + insInfo[site]['refNT'] + "\t" + insInfo[site]['locus'] + "\t" + insInfo[site]['codonRef'] + "\t" + insInfo[site]['codonPos'] + "\t" + insInfo[site]['locPos'] + "\t" + insInfo[site]['altNT'] + "\t" + insInfo[site]['conseq'] + "\t"  + insInfo[site]['freq'] + "\t" + insInfo[site]['count'] + "\t" + insInfo[site]['aaID'] +  "\t" + insInfo[site]['r4s'] + ctryName + "\n")
+        varOut.write(insInfo[site]['vartype'] + "\t"+ str(insInfo[site]['site']) + "\t" + insInfo[site]['varID'] + "\t" + insInfo[site]['refNT'] + "\t" + insInfo[site]['locus'] + "\t" + insInfo[site]['codonRef'] + "\t" + insInfo[site]['codonPos'] + "\t" + insInfo[site]['locPos'] + "\t" + insInfo[site]['altNT'] + "\t" + insInfo[site]['conseq'] + "\t"  + insInfo[site]['freq'] + "\t" + insInfo[site]['count'] + "\t" + insInfo[site]['aaID'] +  "\t" + insInfo[site]['r4s'] + geoID + "\n")
     varOut.close()
     logging.info("Excluding low freq vars: n = %s", lowFreq)
 
-def main():
+def main_country():
 ############################################
 # get all samples of a country (except the ref and bat)
 ############################################
@@ -322,11 +329,6 @@ def main():
     cur.execute('select acc, chg from human_anno a, hap_var b where a.hid = b.hid and acc in %(a)s', params)
     acc_lines = cur.fetchall()
 
-    #    hidMajor = {}
-    #    cur.execute("select * from hap_lineage")
-    #    lineage_lines = cur.fetchall()
-    #    for line in lineage_lines:
-    #        hidMajor[line[0]] = line[1]
     total_count = {}
     allSamples = {}
     for line in acc_lines:
@@ -348,7 +350,6 @@ def main():
 # get frequency & count for each variant
     global varFreq # needed in get_variant
     global varAccCt # needed in get_variant
-    global ctryName
     ctryName = args.country.replace(' ', '_')
     varFreq = {}
     varAccCt = {}
@@ -359,7 +360,7 @@ def main():
         varFreq[change] = freq
         varAccCt[change] = len(iso)
 
-    get_variant(changes)
+    get_variant(changes, ctryName)
 
     for change in changes:
         iso = allSamples[change]
@@ -400,6 +401,203 @@ def main():
     logging.info("Done!")
 #    sys.exit()
 
+def main_area():
+############################################
+# get all samples of an area (except the ref and bat)
+############################################
+    possibleAreas = {1: 'N_America', 2: 'S_America', 3: 'Europe', 4: 'Asia', 5: 'Africa', 6: 'Oceania'}
+
+    if args.area in possibleAreas:
+        logging.info("getting all samples in continent %s from the database...", possibleAreas[args.area])
+    else:
+        logging.info("Allowable area codes are 1-6: %s", possibleAreas)
+        return
+
+    hidLineage = {}
+    cur.execute("select * from hap_lineage")
+    linData = cur.fetchall()
+    for hid in linData: # not all hid has lineages
+        hidLineage[hid[0]] = hid[1]
+    #print(hidLineage[69])
+
+    cur.execute("select acc, col_date, country, state, area_id, hid from vhuman_anno where acc != %s and acc != %s and area_id = %s order by col_date", [refEPI, batEPI, args.area])
+    accData = cur.fetchall()
+    isoPerMonth = {}
+    isoData = {}
+    panLineage = {}
+
+    for iso in accData:
+        iso = list(iso) # make it list, since tuple is not editable
+
+        if iso[5] in hidLineage:
+            panLineage[iso[0]] = hidLineage[iso[5]]
+        else:
+            panLineage[iso[0]] = 'NA'
+
+        iso[1] = re.sub(r"^(\d{4}-\d{2})$", r"\1-15", iso[1])
+
+        yearMonth = re.sub(r"-\d{2}$", r"", iso[1])
+        if re.match(r"2019", yearMonth):
+            yearMonth = '2020-01'
+
+
+        if yearMonth in isoPerMonth: # key: yearMonth, value: acc list
+            isoPerMonth[yearMonth].append(iso[0])
+        else:
+            isoPerMonth[yearMonth] = [iso[0]]
+
+        isoData[iso[0]] = { 'col_date': iso[1],
+                            'country': iso[2],
+                            'state': iso[3] if iso[3] is not None else 'NA',
+                            'area': possibleAreas[args.area],
+                            'var_ct': 0 # initialize
+                        }
+###############################
+# sample isolates evenly among months
+###############################
+    isoEPIs = []
+    for yearMonth in isoPerMonth:
+        isoCt = isoPerMonth[yearMonth]
+        if len(isoCt) > args.per_month:
+            isoChoose = numpy.random.choice(isoCt, size = args.per_month, replace = False)
+            isoPerMonth[yearMonth] = isoChoose
+        logging.info("sample for month %s: %s", yearMonth, str(len(isoPerMonth[yearMonth])))
+
+    for yearMonth in isoPerMonth:
+        isoCt = isoPerMonth[yearMonth]
+        for iso in isoCt:
+            isoEPIs.append(iso)
+
+    var_count = {}
+    for acc in isoEPIs:
+        var_count[acc] = {'syn': 0, 'mis': 0, 'igs': 0 }
+
+############################################
+# get all genetic changes of each isolate
+# and count frequence among the samples (not all isolates in an area)
+############################################
+
+    logging.info("getting all genetic changes: SNPs and indels...")
+    l = tuple(isoEPIs)
+    params = {'a': l}
+    cur.execute('select acc, chg from human_anno a, hap_var b where a.hid = b.hid and acc in %(a)s', params)
+    acc_lines = cur.fetchall()
+
+    total_count = {}
+    allSamples = {} # key: change; value: acc list
+    for line in acc_lines:
+        acc = line[0]
+        chg = line[1]
+        if chg in allSamples:
+            allSamples[chg].append(acc)
+        else:
+            allSamples[chg] = [acc]
+
+        if acc in total_count:
+            total_count[acc] += 1
+        else:
+            total_count[acc] = 1
+
+        changes = list(allSamples.keys())
+    logging.info("total genetic changes: n = %s", len(changes))
+
+# get frequency & count for each variant
+    global varFreq # needed in get_variant
+    global varAccCt # needed in get_variant
+    areaName = possibleAreas[args.area]
+    varFreq = {}
+    varAccCt = {}
+
+    topVar = list()
+    for change in changes:
+        iso = allSamples[change]
+        freq = float(len(iso))/float(len(isoEPIs))
+        varFreq[change] = freq
+        varAccCt[change] = len(iso)
+        if freq > freqCut:
+            topVar.append(change)
+
+    get_variant(topVar, areaName)
+
+    for change in changes:
+        iso = allSamples[change]
+        if change not in snpInfo:
+            continue
+        conseq = snpInfo[change]['conseq']
+        for acc in iso:
+            if conseq == 'synonymous':
+                var_count[acc]['syn'] += 1
+            elif conseq == 'missense':
+                var_count[acc]['mis'] += 1
+            else:
+                var_count[acc]['igs'] += 1
+
+# write iso file
+    acc_output = open('iso_%s.tsv' % areaName, 'w')
+    for iso in isoEPIs:
+        #if iso in var_count: # hid = 1 is not collected
+        isoData[iso]['var_ct'] = var_count[iso]
+        pan = panLineage[iso] if iso in panLineage else 'NA'
+        ct = total_count[iso] if iso in total_count else 0 # hid = 1 no diff
+        acc_output.write(iso + "\t" +
+                         isoData[iso]['col_date'] + "\t" +
+                         isoData[iso]['country'] + "\t" +
+                         isoData[iso]['state'] + "\t" +
+                         isoData[iso]['area'] + "\t" +
+                         str(isoData[iso]['var_ct']['igs']) + "\t" +
+                         str(isoData[iso]['var_ct']['syn']) + "\t" +
+                         str(isoData[iso]['var_ct']['mis']) + "\t"  +
+                         str(ct) + "\t" + pan + "\n"
+        )
+    acc_output.close()
+    logging.info("total isolates: %s", len(isoEPIs))
+
+    # trace top var in each month for muller plot
+    traceChange = {}
+    months = list(isoPerMonth.keys())
+    months.sort()
+    for change in topVar:
+        ctsMonth = list()
+        allAcc = allSamples[change] # all acc's having this var
+        hasChange = {}
+        for acc in allAcc:
+            hasChange[acc] = 1
+        for yearMonth in months:
+            cts = 0
+            isoIds = isoPerMonth[yearMonth]
+            for iso in isoIds:
+                if iso in hasChange:
+                    cts += 1
+            ctsMonth.append(round(cts/len(isoIds)*100,2))
+        traceChange[change] = map(str, ctsMonth)
+
+    trace_output = open('trace_%s.tsv' % areaName, 'w')
+    trace_output.write("continent" + "\t" + "varID" + "\t" +  "counts" + "\t" + "aaID" + "\t" +
+                        "locus" + "\t" + "conseq" + "\t" +
+                        "\t".join(months) + "\n")
+    for change in topVar:
+        #freq = str(round(varFreq[change],6)),
+        locus = ''
+        conseq = ''
+        aaID = 'NA'
+        if varType[change] == 'snp':
+            locus = snpInfo[change]['locus']
+            conseq = snpInfo[change]['conseq']
+            aaID = snpInfo[change]['aaID']
+        elif varType[change] == 'del':
+            locus = delInfo[change]['locus']
+            conseq = delInfo[change]['conseq']
+        else:
+            locus = insInfo[change]['locus']
+            conseq = insInfo[change]['conseq']
+
+        cts = str(varAccCt[change])
+        trace_output.write(areaName + "\t" + change + "\t" + cts + "\t" + aaID +    "\t" +  locus + "\t" + conseq + "\t" +
+                        "\t".join(traceChange[change]) + "\n")
+    trace_output.close()
+    logging.info("trace file written")
+    logging.info("Done!")
+
 rate4site = {}
 if args.r4s is not None:
     if args.snp is None or args.locus is None or args.country is None:
@@ -419,10 +617,15 @@ if args.r4s is not None:
 
 if args.topmost is not None:
     countByCountry()
-else:
-    if args.country is None:
-        logging.info("Provide a country name: --country <name>")
-    else:
-        main()
+    sys.exit()
 
-sys.exit()
+if args.country is not None:
+    main_country()
+    sys.exit()
+
+if args.area is not None:
+    main_area()
+    sys.exit()
+
+#        logging.info("Provide a country name: --country <name>")
+#    else:
