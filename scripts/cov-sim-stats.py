@@ -229,6 +229,7 @@ if args.trace is not None:
                 'mult': data[13]
                 }
 
+    print("\t".join(["model", "snpID", "geneID", "fit", "cts", "multi"]), "\t", "\t".join(map(str, range(1,501))))
     for var in vars:
         snpCts = list()
         for gen_sample in sample_sites:
