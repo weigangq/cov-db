@@ -413,11 +413,11 @@ def main_state():
 ############################################
 # get all samples of a region (except the ref and bat)
 ############################################
-    if args.country:
-        logging.info("getting all samples in a state %s in the country %s from the database...", args.state, args.country)
-    else:
-        logging.info("Need a country name. Use --topmost [1-6] -c  [country] to list country name")
-        return
+    #if args.country:
+    logging.info("getting all samples in a state %s from the database...", args.state)
+    #else:
+    #logging.info("Need a country name. Use --topmost [1-6] -c  [country] to list country name")
+    #return
 
     isoEPIs = sampleByGeo("state", args.state)
     changes = get_changes(isoEPIs)
@@ -473,7 +473,7 @@ def outputTraceFile(varList, geoID):
         freqs = [ chg['freq'] for chg in traceChange[change] ]
         samps = [ chg['total'] for chg in traceChange[change] ]
 
-        trace_output.write(geoID + "\t" + change + "\t" + cts + "\t" + aaID +    "\t" +  locus + "\t" + conseq + "\t" + "\t".join(freqs) + "\t" + 
+        trace_output.write(geoID + "\t" + change + "\t" + cts + "\t" + aaID +    "\t" +  locus + "\t" + conseq + "\t" + "\t".join(freqs) + "\t" +
         "\t".join(samps) +
         "\n")
     trace_output.close()
@@ -558,7 +558,7 @@ if args.topmost is not None:
         countByArea()
     sys.exit()
 
-if args.country is not None and args.state is None:
+if args.country is not None:
     main_country()
     sys.exit()
 
