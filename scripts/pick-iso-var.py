@@ -105,7 +105,8 @@ def getAllMonth():
         yearMonth = date[0]
         # wrap 2019 samples into 2020-01
         if re.match(r"2019", yearMonth):
-            yearMonth = '2020-01'
+            continue
+            #yearMonth = '2020-01'
         allMonths.append(yearMonth)
     return(allMonths)
 
@@ -451,7 +452,7 @@ def outputTraceFile(varList, geoID):
         traceChange[change] = ctsMonth
 
     trace_output = open('trace_%s.tsv' % geoID, 'w')
-    trace_output.write("geo" + "\t" + "varID" + "\t" +  "counts" + "\t" + "aaID" + "\t" + "locus" + "\t" + "conseq" + "\t" + "\t".join(months) +  "\t".join(["samp_" + i for i in months]) + "\n")
+    trace_output.write("geo" + "\t" + "varID" + "\t" +  "counts" + "\t" + "aaID" + "\t" + "locus" + "\t" + "conseq" + "\t" + "\t".join(months) + "\t" +  "\t".join(["samp_" + i for i in months]) + "\n")
 
     for change in varList:
         locus = ''
@@ -472,7 +473,7 @@ def outputTraceFile(varList, geoID):
         freqs = [ chg['freq'] for chg in traceChange[change] ]
         samps = [ chg['total'] for chg in traceChange[change] ]
 
-        trace_output.write(geoID + "\t" + change + "\t" + cts + "\t" + aaID +    "\t" +  locus + "\t" + conseq + "\t" + "\t".join(freqs) +
+        trace_output.write(geoID + "\t" + change + "\t" + cts + "\t" + aaID +    "\t" +  locus + "\t" + conseq + "\t" + "\t".join(freqs) + "\t" + 
         "\t".join(samps) +
         "\n")
     trace_output.close()
