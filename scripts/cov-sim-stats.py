@@ -28,6 +28,9 @@ parser.add_argument("-s", '--sites',
 parser.add_argument("-v", '--vars',
                     help='vars.tsv file')
 
+parser.add_argument("-g", '--genes',
+                    help='genes.tsv file')
+
 parser.add_argument('-f', '--freq_cut', type=int, default = 500,
                     help='Minimal SNP frequency (default = 500, 0.5 percent of simulated samples)')
 
@@ -36,6 +39,14 @@ parser.add_argument('-p', '--pi', action = 'store_true',
 
 parser.add_argument('-t', '--temporal', type = int,
                     help = 'print nucleotide diffs to a reference sample (default: a randome sequence in generation 1). Required: sites.tsv')
+
+parser.add_argument('-a', '--trace_var', action = 'store_true',
+                    help='Trace freq of most frequent SNPs, set by -f; Requires: -s sites.tsv -v vars.tsv files')
+
+parser.add_argument('-b', '--trace_gene', action = 'store_true',
+                    help='Trace var by genes; Requires: -s sites.tsv -v vars.tsv files')
+#parser.add_argument('-g', '--gene', type = int, default = 100,
+#                    help='Trace var freq with at least 100 (1%) presence. Required: vars.tsv')
 '''
 parser.add_argument('-c', '--coal',
                     help='Output: a coalescence tree. Required: lineages.tsv (to be implemented)')
@@ -43,11 +54,6 @@ parser.add_argument('-c', '--coal',
 parser.add_argument('-r', '--rate4site',
                     help='Map per site rates to SNPs. Required: vars.tsv (to be implemented)')
 '''
-parser.add_argument('-a', '--trace', action = 'store_true',
-                    help='Trace freq of most frequent SNPs, set by -f; Requires: -s sites.tsv -v vars.tsv files')
-
-#parser.add_argument('-g', '--gene', type = int, default = 100,
-#                    help='Trace var freq with at least 100 (1%) presence. Required: vars.tsv')
 
 ######################################
 # Program settings
@@ -55,10 +61,48 @@ parser.add_argument('-a', '--trace', action = 'store_true',
 
 args = parser.parse_args()
 logging.basicConfig(level = logging.DEBUG)
-
+freqCut = args.freq_cut
 ################################
 # Define all functions
 ##################################
+
+def parse_gene_file(fname):
+    genes = {}
+    with open(args.genes, "r") as fh:
+        lines = fh.readlines()
+        for line in lines:
+            if line.strip(): # line not empty
+                data = line.split()
+                genes[data[1]] = {'geneID': data[2],
+                                'gene_length': data[2],
+                                'gene_name': data[3]
+                                    }
+    return(genes)
+
+def parse_var_file(fname):
+    vars = {}
+    with open(args.vars, "r") as fh:
+        lines = fh.readlines()
+        for line in lines:
+            if line.strip(): # line not empty
+                data = line.split()
+                vars[data[2]] = {
+                'tag': data[0],
+                'pos': data[1],
+                'varID': data[2],
+                'locus': data[3],
+                'refNT': data[4],
+                'altNT': data[5],
+                'refAA': data[6],
+                'altAA': data[7],
+                'refCodon': data[8],
+                'altCodon': data[9],
+                'conseq': data[10],
+                'fit': data[11],
+                'cts': data[12],
+                'mult': data[13]
+                }
+    return(vars)
 
 def parse_site_file(fname):
     ### load the site file, parse it
@@ -169,9 +213,9 @@ def rate4site():
 logging.info("Start timestamp: %s", datetime.datetime.now())
 
 sample_sites = []
-if args.pi is True or args.trace is not None or args.temporal is not None:
+if args.pi is True or args.trace_var is not None or args.temporal is not None or args.trace_gene is not None:
     if args.sites is None:
-        logging.info("--pi, --trace, --temporal all need a -s site.tsv file as input")
+        logging.info("--pi, --trace_var, --temporal all need a -s site.tsv file as input")
         sys.exit()
     else:
         sample_sites = parse_site_file(args.sites)
@@ -197,41 +241,20 @@ if args.temporal is not None:
             diff_pair = len(set(pickRef) | set(pickInd)) - len(set(pickRef) & set(pickInd))
             print(genRef, "\t", gen, "\t", diff_pair)
 
-if args.trace is not None:
-    # read top 1% missense sites info in var.tsv format
-    freqCut = args.freq_cut # 1% of 10K samples
-    vars = {}
+if args.trace_var is True:
     tag = ''
-
     if args.vars is None:
-        logging.info("--trace needs a -v vars.tsv file as input")
+        logging.info("--trace_var needs a -v vars.tsv file as input")
         sys.exit()
 
-    with open(args.vars, "r") as fh:
-        lines = fh.readlines()
-        for line in lines:
-            if line.strip(): # line not empty
-                data = line.split()
-                if int(data[12]) < freqCut or data[10] != 'missense': # at least 1%  % missense
-                    continue
-                tag = data[0]
-                vars[data[2]] = {
-                'pos': data[1],
-                'locus': data[3],
-                'refNT': data[4],
-                'altNT': data[5],
-                'refAA': data[6],
-                'altAA': data[7],
-                'refCodon': data[8],
-                'altCodon': data[9],
-                'fit': data[11],
-                'cts': data[12],
-                'mult': data[13]
-                }
+    varDict = parse_var_file(args.vars)
 
     print("\t".join(["model", "snpID", "geneID", "fit", "cts", "multi"]), "\t", "\t".join(map(str, range(1,501))))
-    for var in vars:
+    for varId in varDict:
+        if int(varDict[varId]['cts']) < freqCut or varDict[varId]['conseq'] != 'missense':
+                continue
         snpCts = list()
+        tag = varDict[varId]['tag']
         for gen_sample in sample_sites:
             snpCt = 0
             gen = gen_sample['generation']
@@ -239,11 +262,11 @@ if args.trace is not None:
             for site_sample in misSites: # one sample
                 for site in site_sample: # one site
                     snpId = re.sub(r"_.{2,3}$", r"", site)
-                    if snpId == var:
+                    if snpId == varId:
                         snpCt += 1
             snpCts.append(snpCt)
         snpCts = map(str, snpCts)
-        print("\t".join([tag, var, vars[var]['locus'], vars[var]['fit'], vars[var]['cts'], vars[var]['mult']]), "\t", "\t".join(snpCts))
+        print("\t".join([tag, varId, varDict[varId]['locus'], varDict[varId]['fit'], varDict[varId]['cts'], varDict[varId]['mult']]), "\t", "\t".join(snpCts))
 
 if args.pi is True:
     for sample in sample_sites:
@@ -259,6 +282,77 @@ if args.pi is True:
             "%.4f" % pi_all, "\t",
             "%.4f" % pi_syn, "\t",
             "%.4f" % pi_mis)
+
+if args.trace_gene is True:
+    # print syn and mis by gene & generation
+    tag = ''
+    if args.vars is None:
+        logging.info("--trace_gene needs a -v vars.tsv file as input")
+        sys.exit()
+    varDict = parse_var_file(args.vars)
+
+    if args.genes is None:
+        logging.info("--trace_gene needs a -g genes.tsv file as input")
+        sys.exit()
+
+    geneInfo = parse_gene_file(args.genes)
+
+    print("\t".join(["model", "geneID", "gene_leng", "gen", "syn", "mis", "sum"]))
+    geneDict = {}
+    inLocus = {}
+    for varId in varDict:
+        tag = varDict[varId]['tag']
+        gene = varDict[varId]['locus']
+        inLocus[varDict[varId]['varID']] = gene
+        if gene in geneDict:
+            geneDict[gene].append(varDict[varId])
+        else:
+            geneDict[gene] = [ varDict[varId] ]
+
+    for gene in geneDict: # for each gene
+        if gene not in geneInfo:
+            continue
+        gene_len = geneInfo[gene]['gene_length']
+        for gen_sample in sample_sites: # for each gen
+            conseqCts = {'syn':0, 'mis':0, 'sum':0}
+
+            gen = gen_sample['generation']
+
+            for sample in gen_sample['mis_sites']:
+                for site in sample:
+                    snpId = re.sub(r"_.{2,3}$", r"", site)
+                    if gene == inLocus[snpId]:
+                        conseqCts['mis'] += 1
+
+            for sample in gen_sample['syn_sites']:
+                for site in sample:
+                    snpId = re.sub(r"_.{2,3}$", r"", site)
+                    if gene == inLocus[snpId]:
+                        conseqCts['syn'] += 1
+
+            for sample in gen_sample['all_sites']:
+                for site in sample:
+                    snpId = re.sub(r"_.{2,3}$", r"", site)
+                    if gene == inLocus[snpId]:
+                        conseqCts['sum'] += 1
+
+            print("\t".join([tag, gene, gene_len, str(gen), str(conseqCts['syn']), str(conseqCts['mis']), str(conseqCts['sum'])]))
+
+if args.pi is True:
+    for sample in sample_sites:
+        tag = sample['tag']
+        gen = sample['generation']
+        all_sites = sample['all_sites']
+        pi_all = avg_pair_diff(all_sites)
+        syn_sites = sample['syn_sites']
+        pi_syn = avg_pair_diff(syn_sites)
+        mis_sites = sample['mis_sites']
+        pi_mis = avg_pair_diff(mis_sites)
+        print(tag, "\t", gen, "\t",
+            "%.4f" % pi_all, "\t",
+            "%.4f" % pi_syn, "\t",
+            "%.4f" % pi_mis)
+
 
 if args.temporal:
     diff_to_a_sample()
