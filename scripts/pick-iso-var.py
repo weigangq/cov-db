@@ -95,7 +95,8 @@ def countByState():
     cur.execute("select state, count(*) as count_total from vhuman_anno where acc != %s and acc != %s and country = %s group by state order by count_total desc", [refEPI, batEPI, args.country])
     stateData = cur.fetchall()
     for state in stateData:
-        print(args.country + "\t" + state[0] + "\t" + str(state[1]))
+        st = state[0] if state[0] is not None else 'NA'
+        print(args.country + "\t" + st + "\t" + str(state[1]))
 
 def getAllMonth():
     allMonths = list()
