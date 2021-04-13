@@ -22,6 +22,8 @@ import copy
 import numpy as np
 from numpy.random import default_rng
 import datetime
+from Bio.SeqFeature import FeatureLocation
+import re
 
 rng = default_rng() # Random number generator
 
@@ -63,10 +65,10 @@ parser.add_argument('-Q', '--qmatrix', action = "store_true",
                     help='print the internally defined, empirically derived mutation prob matrix & quit')
 
 parser.add_argument('-m', '--mutation', type=float, default=0.1,
-                    help='Mutation rate per genome per generation (default = 0.1)')
+                    help='Mutation rate per genome per generation (default = 0.1). Use a high mutation rate, e.g., -m 10 to estimate num of possible syn and nonsyn sites at each gene locus')
 
 parser.add_argument('-r', '--recombination', type=float, default = 0,
-                    help='Recombination rate in the form of template switching(default=0.1)')
+                    help='Recombination rate in the form of template switching(default=0). Caution: not as well tested!!')
 
 # Arguments for selection schemes
 
@@ -80,10 +82,10 @@ parser.add_argument('-y', '--fit_pos', type = float, default = 1.05,
                     help='fitness gain of a missense mutation (with respect to ref genome) under positive/adaptive selection (default 1.05)')
 
 parser.add_argument('-u', '--prob_neg', type = float, default = 0,
-                    help = 'fraction of missense mutations (with respect to ref genome) under negtive selection (default 0; set e.g., u=0.5 for background selection')
+                    help = 'fraction of missense mutations (with respect to ref genome) under negtive selection (default 0; set e.g., u=0.8 for strong background selection')
 
 parser.add_argument('-v', '--prob_pos', type = float, default = 0,
-                    help = 'fraction of missense mutations (with respect to ref genome) under positive selection (default 0; set e.g., v=0.05 for adaptive evolution)')
+                    help = 'fraction of missense mutations (with respect to ref genome) under positive selection (default 0; set e.g., v=0.1 for strong adaptive evolution)')
 
 ######################################
 # Program settings
@@ -196,14 +198,36 @@ def gene_locations(genbank):
                 else:
                     cds = feature.location.extract(genbank.seq) # properly handles compound location
                     pep = cds.translate()
+                    domains = []
+                    has_domain = False
+                    if id == "YP_009724390.1": # spike domains
+                        has_domain = True
+                        dom1 = {'dom_id': id + '_S1',
+                                'dom_product': "Spike_S1_domain",
+                                'location': FeatureLocation(21562, 23185),
+                                'dom_hit_syn': 0,
+                                'dom_hit_missense': 0
+                        }
+
+                        dom2 = {'dom_id': id + '_S2',
+                                'location': FeatureLocation(23185, 25381),
+                                'dom_product': "Spike_S2_domain",
+                                'dom_hit_syn': 0,
+                                'dom_hit_missense': 0
+                        }
+                        domains  = [ dom1, dom2 ]
+                    prod = feature.qualifiers['product'][0].replace(' ', '_')
+                    prod = prod.replace("'", "") # remove apostrophies
                     proteins[id] = { 'id': id,
                                      'gene': feature.qualifiers['gene'][0],
                                      'location': feature.location, # compound for nsp12
-                                     'product': feature.qualifiers['product'][0],
+                                     'product': prod,
                                      'cds_seq': cds,
                                      'pep_seq': pep,
-                                     'sample_synon': 0,
-                                     'sample_missense': 0
+                                     'hit_synon': 0,
+                                     'hit_missense': 0,
+                                     'has_domain': has_domain,
+                                     'domains': domains
                                    }
     return proteins
 #    for pep in proteins:
@@ -412,12 +436,20 @@ def fitness(individual, mutation_site, new_base):
         site['aa_pre'] = pre_aa
         site['aa_post'] = new_amino_acid
 
+        siteInDom = None
+        if gene['has_domain']:
+            for dom in gene['domains']:
+                if mutation_site in dom['location']:
+                    siteInDom = dom
         # obtain fitness with respect to ref genome
         if new_amino_acid == position_info['aa']: # synonymous (including stop)
             individual['synon'] += 1
             site['fit'] = 1.0
             site['conseq'] = 'synonymous'
             individual['fitness'] *= 1.0
+            gene['hit_synon'] += 1
+            if siteInDom is not None:
+                siteInDom['dom_hit_syn'] += 1
         elif new_amino_acid == '*' or position_info['aa'] == '*': # sense <=> stop
             individual['fitness'] = 0 # remove from gametes
             site['fit'] = 0
@@ -428,6 +460,10 @@ def fitness(individual, mutation_site, new_base):
             individual['fitness'] *= fit
             site['fit'] = fit
             site['conseq'] = 'missense'
+            gene['hit_missense'] += 1
+            if siteInDom is not None:
+                siteInDom['dom_hit_missense'] += 1
+
 #    print(site)
     individual['sites'].append(site)
 #    np.append(individual['sites'], site)
@@ -744,16 +780,17 @@ def outputVariant(gen, population, sample_size, fhInd, fhLine, fhSite, seqs, sam
             else:
                 samp_sites[snpID] = {'count': 1, 'info': site }
 
-            if pos in posInfo:
+            ''' double counts syn and mis; discard
+            if pos in posInfo: # in CDS
                 if pos in sample_gene_sites: # count unique gene sites
                     continue
-                else:
-                    sample_gene_sites[pos] = 1
+                else: # a newe site, add syn or mis
+                    sample_gene_sites[pos] = 1 # seen pos
                     position_info = posInfo[pos]
                     gene = cdsObj[position_info['geneId']]
-                    gene['sample_synon'] += population_sample[i]['synon']
-                    gene['sample_missense'] += population_sample[i]['missense']
-
+                    #gene['sample_synon'] += population_sample[i]['synon']
+                    #gene['sample_missense'] += population_sample[i]['missense']
+            '''
         site_info = "|".join(sites)
         fhSite.write(tagRun  + "\t" + str(gen) + "\t" + samId + "\t" + site_info + "\n")
 
@@ -843,7 +880,12 @@ def simulation(num_gen, pop_size, mut_rate, rec_rate, sample_size):
     # output genes
     geneOut = open("%s-genes.tsv" % tagRun, "w")
     for geneId in cdsObj: # handles compound location beautifully
-        geneOut.write(tagRun + "\t" + geneId + "\t" +  str(len(cdsObj[geneId]['location'])) + "\t" + cdsObj[geneId]['product'] + "\t" + str(cdsObj[geneId]['sample_synon']) + "\t" + str(cdsObj[geneId]['sample_missense']) + "\n")
+        geneOut.write(tagRun + "\t" + geneId + "\t" +  str(len(cdsObj[geneId]['location'])) + "\t" + cdsObj[geneId]['product'] + "\t" + str(cdsObj[geneId]['hit_synon']) + "\t" + str(cdsObj[geneId]['hit_missense']) + "\n")
+
+        if cdsObj[geneId]['has_domain']:
+            for dm in cdsObj[geneId]['domains']:
+                geneOut.write(tagRun + "\t" + dm['dom_id'] + "\t" +  str(len(dm['location'])) + "\t" + dm['dom_product'] + "\t" + str(dm['dom_hit_syn']) + "\t" + str(dm['dom_hit_missense']) + "\n")
+
     geneOut.close()
     logging.info("Mutation counts per gene written to file %s-genes.tsv", tagRun)
     bar.finish()
@@ -877,7 +919,7 @@ if args.proteins:
 
 posInfo = position_info(ref_gb)
 
-sample_gene_sites = {} # record unique sample sites in genes
+#sample_gene_sites = {} # record unique sample sites in genes
 
 simulation(
     generations,
