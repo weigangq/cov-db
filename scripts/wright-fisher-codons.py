@@ -203,17 +203,21 @@ def gene_locations(genbank):
                     if id == "YP_009724390.1": # spike domains
                         has_domain = True
                         dom1 = {'dom_id': id + '_S1',
-                                'dom_product': "Spike_S1_domain",
+                                'dom_product': "S1_subunit",
                                 'location': FeatureLocation(21562, 23185),
                                 'dom_hit_syn': 0,
-                                'dom_hit_missense': 0
+                                'dom_hit_mis': 0,
+                                'dom_sample_syn': 0,
+                                'dom_sample_mis': 0
                         }
 
                         dom2 = {'dom_id': id + '_S2',
                                 'location': FeatureLocation(23185, 25381),
-                                'dom_product': "Spike_S2_domain",
+                                'dom_product': "S2_subunit",
                                 'dom_hit_syn': 0,
-                                'dom_hit_missense': 0
+                                'dom_hit_mis': 0,
+                                'dom_sample_syn': 0,
+                                'dom_sample_mis': 0
                         }
                         domains  = [ dom1, dom2 ]
                     prod = feature.qualifiers['product'][0].replace(' ', '_')
@@ -224,8 +228,10 @@ def gene_locations(genbank):
                                      'product': prod,
                                      'cds_seq': cds,
                                      'pep_seq': pep,
-                                     'hit_synon': 0,
-                                     'hit_missense': 0,
+                                     'hit_syn': 0,
+                                     'hit_mis': 0,
+                                     'sample_syn': 0,
+                                     'sample_mis': 0,
                                      'has_domain': has_domain,
                                      'domains': domains
                                    }
@@ -447,7 +453,7 @@ def fitness(individual, mutation_site, new_base):
             site['fit'] = 1.0
             site['conseq'] = 'synonymous'
             individual['fitness'] *= 1.0
-            gene['hit_synon'] += 1
+            gene['hit_syn'] += 1
             if siteInDom is not None:
                 siteInDom['dom_hit_syn'] += 1
         elif new_amino_acid == '*' or position_info['aa'] == '*': # sense <=> stop
@@ -460,9 +466,9 @@ def fitness(individual, mutation_site, new_base):
             individual['fitness'] *= fit
             site['fit'] = fit
             site['conseq'] = 'missense'
-            gene['hit_missense'] += 1
+            gene['hit_mis'] += 1
             if siteInDom is not None:
-                siteInDom['dom_hit_missense'] += 1
+                siteInDom['dom_hit_mis'] += 1
 
 #    print(site)
     individual['sites'].append(site)
@@ -780,7 +786,7 @@ def outputVariant(gen, population, sample_size, fhInd, fhLine, fhSite, seqs, sam
             else:
                 samp_sites[snpID] = {'count': 1, 'info': site }
 
-            ''' double counts syn and mis; discard
+            # count mis & syn in genes & domains
             if pos in posInfo: # in CDS
                 if pos in sample_gene_sites: # count unique gene sites
                     continue
@@ -788,9 +794,21 @@ def outputVariant(gen, population, sample_size, fhInd, fhLine, fhSite, seqs, sam
                     sample_gene_sites[pos] = 1 # seen pos
                     position_info = posInfo[pos]
                     gene = cdsObj[position_info['geneId']]
-                    #gene['sample_synon'] += population_sample[i]['synon']
-                    #gene['sample_missense'] += population_sample[i]['missense']
-            '''
+                    siteInDom = None
+                    if gene['has_domain']:
+                        for dom in gene['domains']:
+                            if pos in dom['location']:
+                                siteInDom = dom
+
+                    if con == 'synonymous':
+                        gene['sample_syn'] += 1
+                        if siteInDom is not None:
+                            siteInDom['dom_sample_syn'] += 1
+                    if con == 'missense':
+                        gene['sample_mis'] += 1
+                        if siteInDom is not None:
+                            siteInDom['dom_sample_mis'] += 1
+
         site_info = "|".join(sites)
         fhSite.write(tagRun  + "\t" + str(gen) + "\t" + samId + "\t" + site_info + "\n")
 
@@ -880,11 +898,15 @@ def simulation(num_gen, pop_size, mut_rate, rec_rate, sample_size):
     # output genes
     geneOut = open("%s-genes.tsv" % tagRun, "w")
     for geneId in cdsObj: # handles compound location beautifully
-        geneOut.write(tagRun + "\t" + geneId + "\t" +  str(len(cdsObj[geneId]['location'])) + "\t" + cdsObj[geneId]['product'] + "\t" + str(cdsObj[geneId]['hit_synon']) + "\t" + str(cdsObj[geneId]['hit_missense']) + "\n")
+        geneOut.write(tagRun + "\t" + geneId + "\t" +  str(len(cdsObj[geneId]['location'])) + "\t" + cdsObj[geneId]['product'] + "\t" + str(cdsObj[geneId]['hit_syn']) + "\t" + str(cdsObj[geneId]['hit_mis']) + "\t" +
+        str(cdsObj[geneId]['sample_syn']) + "\t" + str(cdsObj[geneId]['sample_mis']) + "\n")
 
         if cdsObj[geneId]['has_domain']:
             for dm in cdsObj[geneId]['domains']:
-                geneOut.write(tagRun + "\t" + dm['dom_id'] + "\t" +  str(len(dm['location'])) + "\t" + dm['dom_product'] + "\t" + str(dm['dom_hit_syn']) + "\t" + str(dm['dom_hit_missense']) + "\n")
+                geneOut.write(tagRun + "\t" + dm['dom_id'] + "\t" +  str(len(dm['location'])) + "\t" + dm['dom_product'] + "\t" + str(dm['dom_hit_syn']) + "\t" +
+                str(dm['dom_hit_mis']) + "\t" +
+                str(dm['dom_sample_syn']) + "\t" +
+                str(dm['dom_sample_mis']) + "\n")
 
     geneOut.close()
     logging.info("Mutation counts per gene written to file %s-genes.tsv", tagRun)
@@ -919,7 +941,7 @@ if args.proteins:
 
 posInfo = position_info(ref_gb)
 
-#sample_gene_sites = {} # record unique sample sites in genes
+sample_gene_sites = {} # record unique sample sites in genes
 
 simulation(
     generations,
