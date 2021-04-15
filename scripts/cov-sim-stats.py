@@ -36,7 +36,10 @@ parser.add_argument('-f', '--freq_cut', type=int, default = 500,
 
 parser.add_argument('-p', '--pi', action = 'store_true',
                     help = 'print average pairwise nucleotide diffs per generation. Requires: -s sites.tsv')
-
+'''
+parser.add_argument('-q', '--pi_gene', action = 'store_true',
+                    help = 'print average pairwise nucleotide diffs per gene. Requires: -s sites.tsv')
+'''
 parser.add_argument('-t', '--temporal', type = int,
                     help = 'print nucleotide diffs to a reference sample (default: a randome sequence in generation 1). Required: sites.tsv')
 
@@ -133,17 +136,18 @@ def parse_site_file(fname):
                     sample_all.append(site)
                 else: # nonsense, skip
                     continue
-            if len(sample_all) > 0:
-                all.append(sample_all)
-            if len(sample_mis) > 0:
-                mis.append(sample_mis)
-            if len(sample_syn) > 0:
-                syn.append(sample_syn)
+            #if len(sample_all) > 0:
+            # append even if empty (diff = 0)
+            all.append(sample_all)
+            #if len(sample_mis) > 0:
+            mis.append(sample_mis)
+            #if len(sample_syn) > 0:
+            syn.append(sample_syn)
         #print(syn)
         samples.append({
             'tag': tag,
             'generation':gen,
-            'all_sites': all,
+            'all_sites': all, # a list of 20 sample_all, one for each sample
             'syn_sites': syn,
             'mis_sites': mis
         })
@@ -162,12 +166,13 @@ def avg_pair_diff(sites):
     '''
     diff = []
     #print(sites)
-    if len(sites) < 1: # no sample
-        return 0
-    elif len(sites) < 2: # one sample
-        return 1
+    #if len(sites) < 1: # no sample
+    #    return 0
+    #elif len(sites) < 2: # one sample
+    #    return 1
 #    print(sites)
     for k1, k2 in itertools.combinations(sites, 2):
+        # empty sets works
         diff_pair = len(set(k1)|set(k2)) - len(set(k1)&set(k2))
         #Wrong: diff_pair = len(set(k1) - set(k2))
 #        print(k1, "-", k2, "\t", diff_pair)
@@ -269,10 +274,10 @@ if args.trace_var is True:
         print("\t".join([tag, varId, varDict[varId]['locus'], varDict[varId]['fit'], varDict[varId]['cts'], varDict[varId]['mult']]), "\t", "\t".join(snpCts))
 
 if args.pi is True:
-    for sample in sample_sites:
+    for sample in sample_sites: # for each gen
         tag = sample['tag']
         gen = sample['generation']
-        all_sites = sample['all_sites']
+        all_sites = sample['all_sites'] # a list of sample_all
         pi_all = avg_pair_diff(all_sites)
         syn_sites = sample['syn_sites']
         pi_syn = avg_pair_diff(syn_sites)
@@ -315,7 +320,6 @@ if args.trace_gene is True:
         gene_len = geneInfo[gene]['gene_length']
         for gen_sample in sample_sites: # for each gen
             conseqCts = {'syn':0, 'mis':0, 'sum':0}
-
             gen = gen_sample['generation']
 
             for sample in gen_sample['mis_sites']:
@@ -339,7 +343,7 @@ if args.trace_gene is True:
             print("\t".join([tag, gene, gene_len, str(gen), str(conseqCts['syn']), str(conseqCts['mis']), str(conseqCts['sum'])]))
 
 if args.pi is True:
-    for sample in sample_sites:
+    for sample in sample_sites: # for each generation
         tag = sample['tag']
         gen = sample['generation']
         all_sites = sample['all_sites']
@@ -348,11 +352,11 @@ if args.pi is True:
         pi_syn = avg_pair_diff(syn_sites)
         mis_sites = sample['mis_sites']
         pi_mis = avg_pair_diff(mis_sites)
+        #print(all_sites)
         print(tag, "\t", gen, "\t",
             "%.4f" % pi_all, "\t",
             "%.4f" % pi_syn, "\t",
             "%.4f" % pi_mis)
-
 
 if args.temporal:
     diff_to_a_sample()

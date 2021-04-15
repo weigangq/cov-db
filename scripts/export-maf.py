@@ -12,10 +12,10 @@ import sys
 import logging
 
 if len(sys.argv) != 2:
-    print("Usage: snp-freq.py country_name", file == sys.stderr)
+    print("Usage: export-vcf.py --iso <iso file> --var <var file> ", file == sys.stderr)
     sys.exit()
 
-freqCut = 0.001    
+freqCut = 0.001
 refEPI = 'ISL_406030'
 batEPI = 'ISL_402131'
 logging.basicConfig(level = logging.DEBUG)
@@ -31,7 +31,7 @@ cur = conn.cursor()
 logging.info("getting all samples of %s from the database...", sys.argv[1])
 
 cur.execute("select acc, col_date, country, state from vhuman_anno where acc != %s and acc != %s and country = %s order by col_date", [refEPI, batEPI, sys.argv[1]])
-accData = cur.fetchall()            
+accData = cur.fetchall()
 isoEPIs = [ iso[0] for iso in accData]
 
 ############################################
@@ -64,9 +64,9 @@ def get_variant(changeList):
             insList.append(change)
     logging.info("Variants read: n = %s", varCt)
 
-    # collect SNPs 
-    par_snp = { 'l': tuple(snpList) }  
-    cur.execute("select * from cv_snp where concat(alt, site) in %(l)s", par_snp) # PK: site + alt
+    # collect SNPs
+    par_snp = { 'l': tuple(snpList) }
+    cur.execute("select * from var_snp where concat(alt, site) in %(l)s", par_snp) # PK: site + alt
     snp = cur.fetchall()
     for dataSNP in snp:
         site = dataSNP[0]
@@ -92,7 +92,7 @@ def get_variant(changeList):
             'varID': "cv" + "-" + change,
             'vartype': 'SNP',
             'altNT': dataSNP[1], # could be multiple altNTs
-            'refNT': dataSNP[2][dataSNP[3]-1] if isCoding else dataSNP[2], 
+            'refNT': dataSNP[2][dataSNP[3]-1] if isCoding else dataSNP[2],
             'locus': dataSNP[6],
             'codonRef': dataSNP[2] if isCoding else 'NA',
             'codonPos': str(dataSNP[3]) if isCoding else 'NA',
@@ -110,7 +110,7 @@ def get_variant(changeList):
     delCt = 0
     par_del = { 'l': tuple(delList) }
     if len(delList):
-        cur.execute("select * from cv_del where del in %(l)s", par_del) 
+        cur.execute("select * from var_del where del in %(l)s", par_del)
         DEL = cur.fetchall()
         for dataDEL in DEL:
             delCt += 1
@@ -120,7 +120,7 @@ def get_variant(changeList):
                 'site': site - 1,
                 'vartype': 'DEL',
                 'varID': "cv" + "-" + change,
-                'altNT': 'N', # A 
+                'altNT': 'N', # A
                 'refNT': 'N' + dataDEL[3], # ATTTTTTTTTTTTTTTTT
                 'locus': dataDEL[1],
                 'codonRef': 'NA',
@@ -131,11 +131,11 @@ def get_variant(changeList):
                 'count': str(varAccCt[change]),
                 'aaID': 'NA'
             }
-            
-    insCt = 0    
-    par_ins = { 'l': tuple(insList) } 
+
+    insCt = 0
+    par_ins = { 'l': tuple(insList) }
     if len(insList):
-        cur.execute("select * from cv_ins where ins in %(l)s", par_ins) 
+        cur.execute("select * from var_ins where ins in %(l)s", par_ins)
         INS = cur.fetchall()
         for dataINS in INS:
             insCt += 1
@@ -148,8 +148,8 @@ def get_variant(changeList):
                 'site': site - 1,
                 'vartype': 'INS',
                 'varID': "cv" + "-" + change,
-                'altNT': refBase + alt, 
-                'refNT': refBase, 
+                'altNT': refBase + alt,
+                'refNT': refBase,
                 'locus': dataINS[1],
                 'codonRef': 'NA',
                 'codonPos': 'NA',
@@ -187,7 +187,7 @@ def get_variant(changeList):
 logging.info("getting all genetic changes: SNPs and indels...")
 l = tuple(isoEPIs)
 params = {'l': l}
-cur.execute('select acc, chg from acc_hap a, hap_chg b where a.hid = b.hid and acc in %(l)s', params)
+cur.execute('select acc, chg from human_anno a, hap_var b where a.hid = b.hid and acc in %(l)s', params)
 acc_snp = cur.fetchall()
 
 allSamples = {}
@@ -199,12 +199,12 @@ for line in acc_snp:
         allSamples[chg].append(acc)
     else:
         allSamples[chg] = [acc]
- 
+
     if acc in var_count:
         var_count[acc] += 1
     else:
         var_count[acc] = 1
-    
+
 changes = list(allSamples.keys())
 logging.info("total genetic changes: n = %s", len(changes))
 
@@ -233,5 +233,3 @@ acc_output.close()
 logging.info("total isolates: %s", len(isoEPIs))
 logging.info("Done!")
 sys.exit
-
-

@@ -137,7 +137,8 @@ def sampleByGeo(geoField, geoID):
                             'country': iso[2],
                             'state': iso[3] if iso[3] is not None else 'NA',
                             'area': possibleAreas[iso[4]],
-                            'var_ct': 0 # initialize
+                            'var_ct': 0, # initialize
+                            'col_month': yearMonth
                         }
 ###############################
 # sample isolates evenly among months
@@ -508,7 +509,9 @@ def outputIsoFile(varList, isoList, geoID):
                             str(isoData[iso]['var_ct']['igs']) + "\t" +
                             str(isoData[iso]['var_ct']['syn']) + "\t" +
                             str(isoData[iso]['var_ct']['mis']) + "\t"  +
-                            str(ct) + "\t" + pan + "\n"
+                            str(ct) + "\t" + pan + "\t" +
+                            isoData[iso]['col_month'] +
+                            "\n"
         )
     acc_output.close()
     logging.info("total isolates: %s", len(isoList))

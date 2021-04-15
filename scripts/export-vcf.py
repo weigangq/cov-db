@@ -104,7 +104,7 @@ for line in lines:
                 'varID': [varID],
                 'varType': varType,
                 'altNT': [data[8]], # could be multiple altNTs
-                'refNT': data[3], 
+                'refNT': data[3],
                 'locus': data[4],
                 'codonRef': data[5] if isCoding else 'NA',
                 'codonPos': str(data[6]) if isCoding else 'NA',
@@ -122,8 +122,8 @@ for line in lines:
             'site': site,
             'varType': varType,
             'varID': [varID],
-            'altNT': [data[8]], 
-            'refNT': data[3], 
+            'altNT': [data[8]],
+            'refNT': data[3],
             'locus': data[4],
             'codonRef': 'NA',
             'codonPos': 'NA',
@@ -132,7 +132,7 @@ for line in lines:
         }
 varFile.close()
 
-logging.info("Variants read: n = %s", varCt)    
+logging.info("Variants read: n = %s", varCt)
 logging.info("Number of SNPs: n = %s", snpCt)
 logging.info("Number of multi-state SNPs: n = %s", multCt)
 
@@ -153,9 +153,9 @@ sampleCt = 1
 
 tup_acc = tuple(isoEPIs)
 par_acc = {'l': tup_acc}
-cur.execute('select acc, chg from acc_hap a, hap_chg b where a.hid = b.hid and acc in %(l)s', par_acc)
+cur.execute('select acc, chg from human_anno a, hap_var b where a.hid = b.hid and acc in %(l)s', par_acc)
 hap = cur.fetchall()
-genoSample = {} 
+genoSample = {}
 # initialize double dict !!!!!!!
 for acc in isoEPIs:
     genoSample[acc] = {}
@@ -195,9 +195,9 @@ varCt = 0
 
 header = vcfpy.Header(
     samples = vcfpy.SamplesInfos(filteredEPIs),
-    lines = [ 
-        vcfpy.HeaderLine('fileformat', 'VCFv4.0'), 
-        vcfpy.HeaderLine('fileDate', str(datetime.datetime.now())), 
+    lines = [
+        vcfpy.HeaderLine('fileformat', 'VCFv4.0'),
+        vcfpy.HeaderLine('fileDate', str(datetime.datetime.now())),
         vcfpy.HeaderLine('source', parser.prog),
         vcfpy.ContigHeaderLine('contig', '<ID=String,Length=Integer>', {'ID': 'EPI_ISL_406030', 'length': 29903}),
         vcfpy.InfoHeaderLine('INFO', '<ID=NS,Number=1,Type=Integer,Description="Number of Samples With Data">', {'ID': 'NS', 'Number': 1, 'Type': 'Integer', 'Description': 'Number of Samples With Data'}),
@@ -209,8 +209,8 @@ with vcfpy.Writer.from_path(args.vcf, header) as writer:
     for site in snpDict:
         geno = {}
         genoCalls = []
-        refNT = snpInfo[site]['refNT'] 
-        altNTs = snpInfo[site]['altNT'] 
+        refNT = snpInfo[site]['refNT']
+        altNTs = snpInfo[site]['altNT']
         geno[refNT] = 0
         altCount = 1
         subs = [] # substitutions
@@ -238,14 +238,14 @@ with vcfpy.Writer.from_path(args.vcf, header) as writer:
                 site = site
             )
             genoCalls.append(sampleCall)
-            
+
         record = vcfpy.Record(
-            CHROM = refEPI, 
-            POS = site, 
-            ID = snpInfo[site]['varID'], 
-            REF = snpInfo[site]['refNT'], 
+            CHROM = refEPI,
+            POS = site,
+            ID = snpInfo[site]['varID'],
+            REF = snpInfo[site]['refNT'],
             ALT = subs,
-            QUAL = None, 
+            QUAL = None,
             FILTER = [], # PASS
             INFO = {},  # consequence calls, locus, etc; a dict
             FORMAT = ['GT'], # a list
@@ -254,7 +254,7 @@ with vcfpy.Writer.from_path(args.vcf, header) as writer:
         varCt += 1
         writer.write_record(record)
     logging.info("SNPs records written to file: n = %s at %s", len(sitesSNPs), datetime.datetime.now())
-        
+
     for change in indelDict: # change is "cv-" varID
         geno = {}
         genoCalls = []
@@ -281,17 +281,17 @@ with vcfpy.Writer.from_path(args.vcf, header) as writer:
                 sample = acc,
 #                data = {'GT': str(allele) + "|" + str(allele) }, # has to be string
                 data = {'GT': str(allele) }, # has to be string
-                site = site 
+                site = site
             )
             genoCalls.append(sampleCall)
-            
+
         record = vcfpy.Record(
-            CHROM = refEPI, 
-            POS = indelInfo[change]['site'], 
-            ID = indelInfo[change]['varID'], 
-            REF = indelInfo[change]['refNT'], 
+            CHROM = refEPI,
+            POS = indelInfo[change]['site'],
+            ID = indelInfo[change]['varID'],
+            REF = indelInfo[change]['refNT'],
             ALT = subs,
-            QUAL = None, 
+            QUAL = None,
             FILTER = [], # PASS
             INFO = {},  # consequence calls, locus, etc; a dict
             FORMAT = ['GT'], # a list
@@ -300,11 +300,6 @@ with vcfpy.Writer.from_path(args.vcf, header) as writer:
         varCt += 1
         writer.write_record(record)
     logging.info("INDELs records written to file: n = %s at %s", len(sitesINDELs), datetime.datetime.now())
- 
+
 logging.info("End timestamp: %s", datetime.datetime.now())
 sys.exit();
-
-
-
-
-
