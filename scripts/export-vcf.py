@@ -34,6 +34,9 @@ parser.add_argument('-s', '--snp', action = 'store_true',
 parser.add_argument('-o', '--vcf', default = 'cov.vcf',
                     help = 'Name of vcf output file (default: cov.vcf)')
 
+parser.add_argument('-d', '--diploid', action = 'store_true',
+                    help = 'Diploid Genotype output, for e.g., vcftools --site-pi')
+
 args = parser.parse_args()
 
 logging.basicConfig(level = logging.DEBUG)
@@ -230,11 +233,11 @@ with vcfpy.Writer.from_path(args.vcf, header) as writer:
                     logging.warning("alt is singleton for %s at %s: assign ref allele", acc, site)
 #            else:
 #                logging.info("ref alleles assigned for %s at %s", acc, site)
-
+            gt = str(allele) + "|" + str(allele) if args.diploid else str(allele)
             sampleCall = vcfpy.Call(
                 sample = acc,
-#                data = {'GT': str(allele) + "|" + str(allele)  }, # has to be string
-                data = {'GT': str(allele) }, # has to be string
+                data = {'GT': gt }, # has to be string; diploid
+#                data = {'GT': str(allele) }, # has to be string
                 site = site
             )
             genoCalls.append(sampleCall)
@@ -277,10 +280,12 @@ with vcfpy.Writer.from_path(args.vcf, header) as writer:
                 else: # alt is singleton/discarded
                     logging.warning("alt is singleton for %s at %s: assign ref allele", acc, site)
 
+            gt = str(allele) + "|" + str(allele) if args.diploid else str(allele)
+
             sampleCall = vcfpy.Call(
                 sample = acc,
-#                data = {'GT': str(allele) + "|" + str(allele) }, # has to be string
-                data = {'GT': str(allele) }, # has to be string
+                data = {'GT': gt }, # has to be string, diploid
+#                data = {'GT': str(allele) }, # has to be string
                 site = site
             )
             genoCalls.append(sampleCall)
