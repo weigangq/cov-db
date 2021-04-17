@@ -273,21 +273,6 @@ if args.trace_var is True:
         snpCts = map(str, snpCts)
         print("\t".join([tag, varId, varDict[varId]['locus'], varDict[varId]['fit'], varDict[varId]['cts'], varDict[varId]['mult']]), "\t", "\t".join(snpCts))
 
-if args.pi is True:
-    for sample in sample_sites: # for each gen
-        tag = sample['tag']
-        gen = sample['generation']
-        all_sites = sample['all_sites'] # a list of sample_all
-        pi_all = avg_pair_diff(all_sites)
-        syn_sites = sample['syn_sites']
-        pi_syn = avg_pair_diff(syn_sites)
-        mis_sites = sample['mis_sites']
-        pi_mis = avg_pair_diff(mis_sites)
-        print(tag, "\t", gen, "\t",
-            "%.4f" % pi_all, "\t",
-            "%.4f" % pi_syn, "\t",
-            "%.4f" % pi_mis)
-
 if args.trace_gene is True:
     # print syn and mis by gene & generation
     tag = ''
