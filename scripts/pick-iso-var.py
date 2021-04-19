@@ -49,6 +49,9 @@ parser.add_argument('-s', '--snp', action = 'store_true',
 parser.add_argument('-p', '--per_month', type = int, default = 100,
                     help = 'Sample size per month (default 100)')
 
+parser.add_argument('-q', '--query_lineage',
+                    help = 'Print lineage given a list of missense mutations')
+
 args = parser.parse_args()
 
 freqCut = args.freq_cut
@@ -552,6 +555,42 @@ cur.execute("select * from hap_lineage")
 linData = cur.fetchall()
 for hid in linData: # not all hid has lineages
         hidLineage[hid[0]] = hid[1]
+
+if args.query_lineage is not None:
+    vars = []
+    with open(args.query_lineage, "r") as var:
+        lines = var.readlines()
+        lines = (line.rstrip() for line in lines) # All lines including the blank ones
+        lines = (line for line in lines if line) #
+        for line in lines:
+            #line = line.rstrip()
+            if re.match("\D\d+\D", line):
+                vars.append(line)
+                logging.info("read in AA mutation code: %s", line)
+            else:
+                logging.info("not legitimate mutation code: %s", line)
+    if len(vars) < 1:
+        logging.info("no legitimate AA code. Quit")
+        sys.exit()
+
+    linSets = list()
+    for var in vars:
+        varSet = list()
+        cur.execute("select distinct b.hid from vmis a, hap_var b where a.chg = b.chg and mut = %s", [var])
+        hidData = cur.fetchall()
+        for hid in hidData:
+            varSet.append(hidLineage[hid[0]])
+        if len(varSet) < 1:
+            logging.info("No lineage found for %s", var)
+            sys.exit()
+        else:
+            logging.info("Lineages retrieved for %s", var)
+        linSets.append(set(varSet))
+
+    inAllSets = linSets[0].intersection(*linSets)
+    outList = list(inAllSets)
+    outList.sort()
+    print(outList)
 
 if args.topmost is not None:
     if args.area is not None:

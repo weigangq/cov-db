@@ -27,7 +27,7 @@ parser.add_argument("-s", '--sites',
 
 parser.add_argument("-v", '--vars',
                     help='vars.tsv file')
-
+                    
 parser.add_argument("-g", '--genes',
                     help='genes.tsv file')
 
