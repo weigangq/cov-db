@@ -27,7 +27,7 @@ parser.add_argument("-s", '--sites',
 
 parser.add_argument("-v", '--vars',
                     help='vars.tsv file')
-                    
+
 parser.add_argument("-g", '--genes',
                     help='genes.tsv file')
 
@@ -254,12 +254,15 @@ if args.trace_var is True:
 
     varDict = parse_var_file(args.vars)
 
-    print("\t".join(["model", "snpID", "geneID", "fit", "cts", "multi"]), "\t", "\t".join(map(str, range(1,501))))
+    print("\t".join(["model", "snpID", "geneID", "half_life" ,"fit", "cts", "multi"]), "\t", "\t".join(map(str, range(1,501))))
     for varId in varDict:
         if int(varDict[varId]['cts']) < freqCut or varDict[varId]['conseq'] != 'missense':
-                continue
+            continue
         snpCts = list()
         tag = varDict[varId]['tag']
+        begin = 0
+        end = 0
+        seen = 0
         for gen_sample in sample_sites:
             snpCt = 0
             gen = gen_sample['generation']
@@ -269,9 +272,17 @@ if args.trace_var is True:
                     snpId = re.sub(r"_.{2,3}$", r"", site)
                     if snpId == varId:
                         snpCt += 1
+
+            if snpCt > 0 and seen == 0: # identify first emergence
+                begin = gen
+                seen = 1
+
+            if seen > 0 and (snpCt == 0 or gen == 500): # identify extinction or end
+                end = gen
+
             snpCts.append(snpCt)
         snpCts = map(str, snpCts)
-        print("\t".join([tag, varId, varDict[varId]['locus'], varDict[varId]['fit'], varDict[varId]['cts'], varDict[varId]['mult']]), "\t", "\t".join(snpCts))
+        print("\t".join([tag, varId, varDict[varId]['locus'],  str(end-begin+1), varDict[varId]['fit'], varDict[varId]['cts'], varDict[varId]['mult']]), "\t", "\t".join(snpCts))
 
 if args.trace_gene is True:
     # print syn and mis by gene & generation
