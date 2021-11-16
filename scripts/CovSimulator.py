@@ -628,7 +628,7 @@ def recombination(pool, rec_rate):
 #    numRec = round(sum(poisson))
     numRec = rng.poisson(rec_rate) # rate is per pool
     for i in range(numRec):
-        x1, x2 = rng.choice(len(pool), 2, replace = False)
+        x1, x2 = rng.choice(pool, 2, replace = False)
         # copy parental gametes
         #gam1 = {key: pool[x1][key] for key in ('sites', 'seq', 'lineage', 'fitness', 'synon', 'missense', 'igs')}
         #gam2 = {key: pool[x2][key] for key in ('sites', 'seq', 'lineage', 'fitness', 'synon', 'missense', 'igs')}
@@ -638,6 +638,8 @@ def recombination(pool, rec_rate):
 
         # Make two recombinants
         # add seq:
+        gam1 = {}
+        gam2 = {}
         left1 = x1['seq'][:breakup] # not including break point
         right1 = x1['seq'][breakup:] # including break point
         left2 = x2['seq'][:breakup]
@@ -660,28 +662,9 @@ def recombination(pool, rec_rate):
             if gam2['seq'][i] != genomeSeq[i]:
                 gam2_sites.append(i)
 
-        '''
-        for site in pool[x1]['sites']: # for each mutated site in x1
-            mut_site = site['mut_site']
-            if mut_site < breakup: # if left of breakup position
-                gam1_sites.append(site) # assign to gam1
-                #gam1 = fitness(gam1, mut_site, gam1['seq'][mut_site])
-            else:
-                gam2_sites.append(site) # assign to gam2
-                #gam2 = fitness(gam2, mut_site, gam2['seq'][mut_site])
+        gam1['sites'] = []
+        gam2['sites'] = []
 
-        for site in pool[x2]['sites']:
-            mut_site = site['mut_site']
-            if mut_site < breakup:
-                gam2_sites.append(site)
-                #gam2 = fitness(gam2, mut_site, gam2['seq'][mut_site])
-            else:
-                gam1_sites.append(site)
-                #gam1 = fitness(gam1, mut_site, gam1['seq'][mut_site])
-        gam1['sites'] = gam1_sites
-        gam2['sites'] = gam2_sites
-
-        '''
         gam1['fitness'] = 1
         gam2['fitness'] = 1
 
@@ -693,12 +676,16 @@ def recombination(pool, rec_rate):
 
         gam1['igs'] = 0
         gam2['igs'] = 0
-        
-        # recalculate fitness
-        for mut_site in gam1_sites:
-            gam1 = fitness(gam1, mut_site, gam1['seq'][mut_site])
-        for mut_site in gam2_sites:
-            gam2 = fitness(gam2, mut_site, gam2['seq'][mut_site])
+
+        # print(gam1_sites)
+        # print(gam2_sites)
+        # recalculate fitness (and add sites)
+        if len(gam1_sites):
+            for mut_site in gam1_sites:
+                gam1 = fitness(gam1, mut_site, gam1['seq'][mut_site])
+        if len(gam2_sites):
+            for mut_site in gam2_sites:
+                gam2 = fitness(gam2, mut_site, gam2['seq'][mut_site])
 
         pool.append(gam1)
         pool.append(gam2)
