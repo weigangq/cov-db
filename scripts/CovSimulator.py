@@ -624,57 +624,85 @@ def recombination(pool, rec_rate):
         Returns:
             pool (list): A modified list where with recombined individuals
     '''
-    poisson = rng.poisson(rec_rate, len(pool)) # rate is per individual
-    numRec = round(sum(poisson))
+#    poisson = rng.poisson(rec_rate, len(pool)) # rate is per individual
+#    numRec = round(sum(poisson))
+    numRec = rng.poisson(rec_rate) # rate is per pool
     for i in range(numRec):
         x1, x2 = rng.choice(len(pool), 2, replace = False)
         # copy parental gametes
-        gam1 = {key: pool[x1][key] for key in ('sites', 'seq', 'lineage', 'fitness')}
-        gam2 = {key: pool[x2][key] for key in ('sites', 'seq', 'lineage', 'fitness')}
+        #gam1 = {key: pool[x1][key] for key in ('sites', 'seq', 'lineage', 'fitness', 'synon', 'missense', 'igs')}
+        #gam2 = {key: pool[x2][key] for key in ('sites', 'seq', 'lineage', 'fitness', 'synon', 'missense', 'igs')}
 
         # pick breakpoint
         breakup = rng.choice(len(genomeSeq), 1)[0]
 
         # Make two recombinants
         # add seq:
-        left1 = gam1['seq'][:breakup] # not including break point
-        right1 = gam1['seq'][breakup:] # including break point
-        left2 = gam2['seq'][:breakup]
-        right2 = gam2['seq'][breakup:]
+        left1 = x1['seq'][:breakup] # not including break point
+        right1 = x1['seq'][breakup:] # including break point
+        left2 = x2['seq'][:breakup]
+        right2 = x2['seq'][breakup:]
         gam1['seq'] = left1 + right2
         gam2['seq'] = left2 + right1
 
         # add fractional lineage:
-        gam1['lineage'] += [ round(breakup/len(genomeSeq), 2) ]
-        gam2['lineage'] += [ round(1 - breakup/len(genomeSeq), 2) ]
+        gam1['lineage'] = x1['lineage']  + [ round(breakup/len(genomeSeq), 2) ]
+        gam2['lineage'] = x2['lineage'] + [ round(1 - breakup/len(genomeSeq), 2) ]
 
-        # add sites; calculate fitness for each site & each recombinant
+
+        # add sites; re-calculate fitness for each site & each recombinant
         gam1_sites = []
         gam2_sites = []
+        # get mutated sites
+        for i in range(len(genomeSeq)):
+            if gam1['seq'][i] != genomeSeq[i]:
+                gam1_sites.append(i)
+            if gam2['seq'][i] != genomeSeq[i]:
+                gam2_sites.append(i)
 
-        for site in pool[x1]['sites']:
+        '''
+        for site in pool[x1]['sites']: # for each mutated site in x1
             mut_site = site['mut_site']
-            if mut_site < breakup:
-                gam1_sites.append(site)
-                gam1 = fitness(gam1, mut_site, gam1['seq'][mut_site])
+            if mut_site < breakup: # if left of breakup position
+                gam1_sites.append(site) # assign to gam1
+                #gam1 = fitness(gam1, mut_site, gam1['seq'][mut_site])
             else:
-                gam2_sites.append(site)
-                gam2 = fitness(gam2, mut_site, gam2['seq'][mut_site])
+                gam2_sites.append(site) # assign to gam2
+                #gam2 = fitness(gam2, mut_site, gam2['seq'][mut_site])
 
         for site in pool[x2]['sites']:
             mut_site = site['mut_site']
-            if site < breakup:
+            if mut_site < breakup:
                 gam2_sites.append(site)
-                gam2 = fitness(gam2, mut_site, gam2['seq'][mut_site])
+                #gam2 = fitness(gam2, mut_site, gam2['seq'][mut_site])
             else:
                 gam1_sites.append(site)
-                gam1 = fitness(gam1, mut_site, gam1['seq'][mut_site])
+                #gam1 = fitness(gam1, mut_site, gam1['seq'][mut_site])
         gam1['sites'] = gam1_sites
         gam2['sites'] = gam2_sites
 
+        '''
+        gam1['fitness'] = 1
+        gam2['fitness'] = 1
+
+        gam1['synon'] = 0
+        gam2['synon'] = 0
+
+        gam1['missense'] = 0
+        gam2['missense'] = 0
+
+        gam1['igs'] = 0
+        gam2['igs'] = 0
+        
+        # recalculate fitness
+        for mut_site in gam1_sites:
+            gam1 = fitness(gam1, mut_site, gam1['seq'][mut_site])
+        for mut_site in gam2_sites:
+            gam2 = fitness(gam2, mut_site, gam2['seq'][mut_site])
+
         pool.append(gam1)
         pool.append(gam2)
-        return pool
+    return pool
 
 '''
         left_sites = gam2['sites'][gam2['sites'] < breakup]
