@@ -571,8 +571,11 @@ def mutate(individual, mutation_sites):
         individual = fitness(individual, site, new_base)
     return individual
 
-def reproduction(pop, mut_rate):
+def reproduction2(pop, mut_rate):
     '''
+        Produced reduced total mutations (and missense) in neut model. Coalescent trees are also mis-shaped.
+        Round errors for the fitness function?
+
         A function that performs reproduction with mutation
         in a population. Lineage IDs and mutated sites are appended
         to the individual dictionary objects.
@@ -581,61 +584,45 @@ def reproduction(pop, mut_rate):
             pop (list): A list of dictionaries representing individuals
                         in a population.
 
-            num_gametes (int): Initial number of produced gametes.
-
-            genome_len: (int): Genome size.
-
-            positions (dict): Dictionary containing information about each
+            mut_rate (float): Dictionary containing information about each
                                   coding position in a genome.
         Returns:
             pool (list): A list of dictionaries representing gamete
                          individuals.
     '''
-
-    '''
-    for i in range(len(pop)):  # For each individual
-        ind = pop[i]
-        lineage = ind['lineage']
-
-        # skip nonsense mutations or other way around
-        if ind['fitness'] == 0:
-            continue
-        # Number of gametes based on fitness value
-        size = int(num_gametes * ind['fitness'])
-        for j in range(size):  # For each gamete
-            gamete = copy.deepcopy(ind)
-            gamete['lineage'] = lineage + [i] # list concat, not append
-            num_mut = rng.poisson(mut_rate)  # Draw a Poisson number, mostly 0, 1
-    '''
     pool = []
     gam_count = 0
-    while gam_count < len(pop):
-        ind = rng.choice(pop)
-        lineage = ind['lineage']
-        fit_ind = ind['fitness']
-        # expm1 = exp(x) - 1; poisson k>0 probs as fitness cutoff:
-        cut_off = -1 * np.expm1(-1*fit_ind)
-        pick = rng.choice([1,0], p = [cut_off, 1 - cut_off])
-        if pick == 1:
-#            print("picked gamete no " + str(gam_count) + " for ind " + str(fit_ind))
-            gamete = copy.deepcopy(ind)
-            gamete['lineage'] = lineage + [gam_count] # list concat, not append
-            num_mut = rng.poisson(mut_rate)  # Draw a Poisson number, mostly 0, 1
-            gam_count += 1
 
-            if num_mut > 0:
-                mut_sites = rng.choice(len(genomeSeq), num_mut) # could be the same site
-                # record recurrence
-                for mut_site in mut_sites:
-                    if mut_site in recurMutSites:
-                        recurMutSites[mut_site] += 1
-                    else:
-                        recurMutSites[mut_site] = 1
+    # a list of cutoff values for each ind
+    probs = [ -np.expm1(-ind['fitness']) for ind in pop ]
 
-                # Mutate individual
-                gamete = mutate(gamete, mut_sites)
+    # normalized probs
+    sum_prob = 0;
+    for prob in probs:
+        sum_prob += prob
+    norm_probs = [ p/sum_prob for p in probs ]
 
-            pool.append(gamete)
+    # pick gametes according to probs, with replacement
+    choosen = rng.choice(pop, len(pop), p = norm_probs, replace = True)
+    for ind in choosen:
+        gamete = copy.deepcopy(ind)
+        gamete['lineage'] = ind['lineage'] + [gam_count] # list concat, not append
+        num_mut = rng.poisson(mut_rate)  # Draw a Poisson number, mostly 0, 1
+        gam_count += 1
+
+        if num_mut > 0:
+            mut_sites = rng.choice(len(genomeSeq), num_mut) # could be the same site
+            # record recurrence
+            for mut_site in mut_sites:
+                if mut_site in recurMutSites:
+                    recurMutSites[mut_site] += 1
+                else:
+                    recurMutSites[mut_site] = 1
+
+            # Mutate individual
+            gamete = mutate(gamete, mut_sites)
+
+        pool.append(gamete)
     return pool
 
 # Recombination
@@ -737,7 +724,7 @@ def wright_fisher(pop, mut_rate, rec_rate):
             gamete_next (list): A new population list of dictionaries
                                 representing individuals.
     '''
-    gamete_pool = reproduction(pop, mut_rate)
+    gamete_pool = reproduction2(pop, mut_rate)
     if rec_rate > 0:
         gamete_pool = recombination(gamete_pool, rec_rate)
     return gamete_pool
