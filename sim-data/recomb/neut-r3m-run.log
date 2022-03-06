@@ -1,0 +1,18 @@
+INFO:root:Using mutation prob matrix: {'A': {'C': 0.1083, 'G': 0.7, 'T': 0.1917}, 'C': {'A': 0.0475, 'G': 0.0033, 'T': 0.9492}, 'G': {'A': 0.2102, 'C': 0.0931, 'T': 0.6967}, 'T': {'A': 0.1025, 'C': 0.795, 'G': 0.1025}}
+INFO:root:Start timestamp: 2022-03-05 00:13:06.029430
+INFO:root:Simulate CoV genome evolution under Wright-Fisher model
+INFO:root:Genome file: -b ../../test-files/NC_045512.2.gb
+INFO:root:Genome length: 29903 nt
+INFO:root:Population size: -p 200 individuals
+INFO:root:Sample size: -s 20 individuals per generation
+INFO:root:Mutation rate: -m 0.1 per genome per generation
+INFO:root:Recombination rate: -r 0.3 per genome per generation
+INFO:root:Total generations: -g 500
+INFO:root:Negative selection against missense: -u 0 probability with -x 0.95 fitness cost
+INFO:root:Positive selection for missense: -v 0 probability with -y 1.05 fitness gain
+INFO:root:Neutral missense: probability of 1 with fitness of 1
+INFO:root:Mutation counts per sample written to file neut-r3m-samples.tsv
+INFO:root:Lineage info per sample written to file neut-r3m-lineages.tsv
+INFO:root:Mutated sites per sample written to file neut-r3m-vars.tsv
+INFO:root:Mutation counts per gene written to file neut-r3m-genes.tsv
+INFO:root:End timestamp: 2022-03-05 01:06:41.288653
