@@ -187,7 +187,7 @@ def avg_pair_diff(sites):
     return(pi)
 
 def entropy(file):
-    model = file.split("/")[-1].split("-")[0]
+    # model = file.split("/")[-1].split("-")[0]
     with open(file, "r") as test_sites:
         sim_data = list(csv.reader(test_sites, delimiter="\t"))
 
@@ -201,7 +201,7 @@ def entropy(file):
 
     # Find number of generations automatically
     num_generations = int(sim_data[-1][1])
-
+    model = sim_data[-1][0]
     # Parse sites into dictionary
     # Format: {gen 1: {site_num: {mut: #, mut, #}, site_num: {mut: #, mut:#}, ... } 
     #              gen: {site_num: {mut: #, ...}, site_num: {...} }
