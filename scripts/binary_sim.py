@@ -1,34 +1,33 @@
 import numpy as np
 import argparse
+import logging
+from numpy.random import default_rng
+import sys
 
-
-parser = argparse.ArgumentParser(description="Novelty + objective search of fitness of random binary strings.")
-
+parser = argparse.ArgumentParser(description="Novelty + objective search of fitness of random binary strings. Author: Winston Koh (Qiu Lab)")
 parser.add_argument('-l', '--length', type=int, default=50, help='Length of each sequence.')
-
 parser.add_argument('-p', '--pop_size', type=int, default=100, help='Number of individuals in the population.')
-
 parser.add_argument('-tr', '--trials', type=int, default=100, help='Number of trials to run.')
-
 parser.add_argument('-n', '--nearest_neighbors', type=int, default=5,
                     help='Number of nearest neighbors to use when searching.')
-
 parser.add_argument('-th', '--threshold', type=float, default=18.8, help='Threshold to use for the novelty archive.')
-
 parser.add_argument('-hfl', '--high_fitness_length', type=int, default=10, help='Length of the high fitness string.')
-
 parser.add_argument('-hfv', '--high_fitness_value', type=int, default=20,
                     help='Fitness value of the high fitness string.')
-
+parser.add_argument('-t', '--tag', default = 'test',
+                    help='prefix for output files (default "out")')
 args = parser.parse_args()
+rng = default_rng() # Random number generator
+tagRun = args.tag
 
+logging.basicConfig(filename = "%s-run.log" % tagRun,
+                    filemode = "w",
+                    level = logging.DEBUG)
 
 # Print simulation parameters
-print(f"Simulation parameters:\n Population size: {args.pop_size}\n Genome length: {args.length}\n Trials: "
-      f"{args.trials}\n Nearest neighbors: {args.nearest_neighbors}\n Threshold: {args.threshold}\n "
-      f"High fitness string length: {args.high_fitness_length}\n High fitness string value: {args.high_fitness_value}\n"
-      )
-
+logging.info("Simulation parameters:\n Population size: {%s}\n Genome length: {%s}\n Trials: {%s}", args.pop_size, args.length, args.trials)
+logging.info(" Nearest neighbors: {%s}\n Threshold: {%s}", args.nearest_neighbors, args.threshold)
+logging.info(" High fitness string length: {%s}\n High fitness string value: {%s}", args.high_fitness_length, args.high_fitness_value)
 
 def arr_distances(nparray, compare_pop):
     # Find distance between nparray and every other individual in compare_pop.
@@ -40,7 +39,6 @@ def arr_distances(nparray, compare_pop):
     distances.sort(key=lambda x: x[0])  # Sort by distance.
     return distances
 
-
 def highest_fitness(population, high_fitness_string):
     # Search for the individual with the highest fitness
     fitness = []
@@ -51,7 +49,6 @@ def highest_fitness(population, high_fitness_string):
         if high_fitness_string in str(indiv[1]):
             indiv[0] += args.high_fitness_value
     return max(fitness)
-
 
 class Population:
     def __init__(self, length, pop=20, hfs_length=10, seed=None):
@@ -105,11 +102,9 @@ class Population:
 
 
 # Print results and save to file
-outfile = open(f"binary-sim-tr{args.trials}l{args.length}p{args.pop_size}n{args.nearest_neighbors}th{args.threshold}.tsv", "w")
-
-outfile.write("Trial\tTarget\tArchive_size\tNovelty_fitness\tSearch_size\tObjective_fitness\n")
+#outfile = open(f"binary-sim-tr{args.trials}l{args.length}p{args.pop_size}n{args.nearest_neighbors}th{args.threshold}.tsv", "w")
+#outfile.write("Trial\tTarget\tArchive_size\tNovelty_fitness\tSearch_size\tObjective_fitness\n")
 print("Trial\tTarget\tArchive_size\tNovelty_fitness\tSearch_size\tObjective_fitness")
-
 
 results = {"Objective": 0, "Novelty": 0}
 for n in range(args.trials):
@@ -124,10 +119,13 @@ for n in range(args.trials):
     if novelty[0] == p.highest_fitness[0]:
         results["Novelty"] += 1
     
+#    print(f"{n+1}\t{p.highest_fitness[0]}\t{len(p.archive)}\t{novelty[0]}\t{len(p.seen)}\t{objective[0]}")
+#    outfile.write(f"{n+1}\t{p.highest_fitness[0]}\t{len(p.archive)}\t{novelty[0]}\t{len(p.seen)}\t{objective[0]}\n")
     print(f"{n+1}\t{p.highest_fitness[0]}\t{len(p.archive)}\t{novelty[0]}\t{len(p.seen)}\t{objective[0]}")
-    outfile.write(f"{n+1}\t{p.highest_fitness[0]}\t{len(p.archive)}\t{novelty[0]}\t{len(p.seen)}\t{objective[0]}\n")
 
-outfile.close()
+#outfile.close()
 
 # Print final count of number of trials where objective/novelty gets the highest fitness.
-print("\n", results)
+logging.info(results)
+
+sys.exit()
