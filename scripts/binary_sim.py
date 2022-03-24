@@ -39,6 +39,9 @@ def arr_distances(nparray, compare_pop):
     distances.sort(key=lambda x: x[0])  # Sort by distance.
     return distances
 
+# Fitness landscape model 1. Additive
+# Model 2. Epstasis, with normal distribution;  assign fitness by normal distribution, with mean=0 and sd=1, and pick the highest as the most fit
+# Model 3. Epstasis, with exponential distribution: assign fitness by exponential distribution, with mean=1 and sd=1
 def highest_fitness(population, high_fitness_string):
     # Search for the individual with the highest fitness
     fitness = []
@@ -107,8 +110,9 @@ class Population:
 print("Trial\tTarget\tArchive_size\tNovelty_fitness\tSearch_size\tObjective_fitness")
 
 results = {"Objective": 0, "Novelty": 0}
+p = Population(length=args.length, pop=args.pop_size, hfs_length=args.high_fitness_length, seed=11)
 for n in range(args.trials):
-    p = Population(length=args.length, pop=args.pop_size, hfs_length=args.high_fitness_length, seed=n)
+#    p = Population(length=args.length, pop=args.pop_size, hfs_length=args.high_fitness_length, seed=n)
 
     objective = p.objective_fitness(nearest_neighbors=args.nearest_neighbors, seed=n+1)
     novelty = p.novelty_search(threshold=args.threshold, nearest_neighbors=args.nearest_neighbors)
@@ -127,5 +131,8 @@ for n in range(args.trials):
 
 # Print final count of number of trials where objective/novelty gets the highest fitness.
 logging.info(results)
+
+# output 1: "pop.tsv": pop with fitness, a list of binary string, one string per line, with fitness
+# output 2: "path.tsv": trial=1, step=1, fit=1
 
 sys.exit()
