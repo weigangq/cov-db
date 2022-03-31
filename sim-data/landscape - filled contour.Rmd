@@ -1,0 +1,92 @@
+---
+title: "Fitness landscape using filled.contour"
+author: "Anh Pham"
+date: "3/29/2022"
+output:
+  pdf_document: default
+  word_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+setwd("/Users/vanan/Documents/GitHub/cov-db/sim-data")
+library(tidyverse)
+library(stringdist)
+library(ggrepel)
+library(akima)
+library(lattice)
+
+## Exponential
+pop <- read_tsv("exp_pop.tsv")
+fit <- pop$Fitness
+dist.mat <- as.matrix(stringdistmatrix(pop$String))
+rownames(dist.mat) <- paste("g", 1:100, sep = "")
+colnames(dist.mat) <- paste("g", 1:100, sep = "")
+cmd <- cmdscale(as.dist(dist.mat))
+cmd.df <- as.data.frame(cmd)
+cmd.df <- cmd.df %>% mutate(id = paste("g", 1:100, sep = ""))
+cmd.df <- cmd.df %>% mutate(fit = fit )
+colnames(cmd.df) <- c("x", "y", "id", "fit")
+# Landscape
+fld <- with(cmd.df, interp(x = x, y = y, z = fit))
+filled.contour(x = fld$x,
+               y = fld$y,
+               z = fld$z,
+               color.palette = 
+                   colorRampPalette(c("purple","blue", "green", "yellow", "orange", "red")),
+               plot.title = title(main = "Exponential",
+                                  xlab = "x",
+                                  ylab = "y"),
+               key.title = title(main="Fitness ", cex.main = 1),
+               plot.axes={axis(1);axis(2); contour(fld, add = TRUE, lwd = 0.5)})
+
+
+## Additive
+pop1 <- read_tsv("add_pop.tsv")
+fit1 <- pop1$Fitness
+dist1.mat <- as.matrix(stringdistmatrix(pop1$String))
+rownames(dist1.mat) <- paste("g", 1:100, sep = "")
+colnames(dist1.mat) <- paste("g", 1:100, sep = "")
+cmd1 <- cmdscale(as.dist(dist1.mat))
+cmd1.df <- as.data.frame(cmd1)
+cmd1.df <- cmd1.df %>% mutate(id = paste("g", 1:100, sep = ""))
+cmd1.df <- cmd1.df %>% mutate(fit = fit1 )
+colnames(cmd1.df) <- c("x", "y", "id", "fit")
+# Landscape
+fld1 <- with(cmd1.df, interp(x = x, y = y, z = fit))
+filled.contour(x = fld1$x,
+               y = fld1$y,
+               z = fld1$z,
+               color.palette = 
+                   colorRampPalette(c("purple","blue", "green", "yellow", "orange", "red")),
+               plot.title = title(main = "Additive",
+                                  xlab = "x",
+                                  ylab = "y"),
+               key.title = title(main="Fitness ", cex.main = 1),
+               plot.axes={axis(1);axis(2); contour(fld1, add = TRUE, lwd = 0.5)})
+
+## Normal
+pop2 <- read_tsv("norm_pop.tsv")
+fit2 <- pop2$Fitness
+dist2.mat <- as.matrix(stringdistmatrix(pop2$String))
+rownames(dist2.mat) <- paste("g", 1:100, sep = "")
+colnames(dist2.mat) <- paste("g", 1:100, sep = "")
+cmd2 <- cmdscale(as.dist(dist2.mat))
+cmd2.df <- as.data.frame(cmd2)
+cmd2.df <- cmd2.df %>% mutate(id = paste("g", 1:100, sep = ""))
+cmd2.df <- cmd2.df %>% mutate(fit = fit2 )
+colnames(cmd2.df) <- c("x", "y", "id", "fit")
+# Landscape
+fld2 <- with(cmd2.df, interp(x = x, y = y, z = fit))
+filled.contour(x = fld2$x,
+               y = fld2$y,
+               z = fld2$z,
+               color.palette = 
+                   colorRampPalette(c("purple","blue", "green", "yellow", "orange", "red")),
+               plot.title = title(main = "Normal",
+                                  xlab = "x",
+                                  ylab = "y"),
+               key.title = title(main="Fitness ", cex.main = 1),
+               plot.axes={axis(1);axis(2); contour(fld2, add = TRUE, lwd = 0.5)})
+```
