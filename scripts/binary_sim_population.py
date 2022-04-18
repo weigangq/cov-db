@@ -1,111 +1,125 @@
 import numpy as np
-
+from numpy.random import default_rng
 
 def arr_to_str(nparray):
     # Convert 1D numpy array to a single string.
     return ''.join(str(nparray)[1:-1].split())
 
+def str_to_arr(string):
+    # Convert a binary string into numpy array.
+    return np.asarray(list(string), dtype = np.integer)
 
-def arr_distances(nparray, compare_pop, genome_size):
+def dist_to_closest(nparray, land_pop):
+    dist_to_land = []
+    for id in land_pop:
+        hamming = np.sum(np.absolute(nparray - np.asarray(list(land_pop[id]['hap']), dtype = np.integer)))
+        dist_to_land.append({
+            'dist': hamming,
+            'land_id': id
+            })
+            
+    closest_id = sorted(dist_to_land, key = lambda x: x['dist'])[0]
+    return closest_id  # List of mutated haps
+    
+def dist_to_fittest(fittest, compare_pop, genome_size):
     # Find distance between nparray and every other individual in compare_pop.
     distances = []
     for indiv in range(compare_pop.shape[0]):
         # Hamming distance: number of element-wise differences.
-        hamming = np.sum(np.absolute(nparray - compare_pop[indiv]))
-        distances.append((genome_size - hamming, compare_pop[indiv]))
-    return distances  # List of [fitness, array]
+        hamming = np.sum(np.absolute(fittest - compare_pop[indiv]))
+        distances.append({
+            'fit': hamming/genome_size, 
+            'hap': compare_pop[indiv]
+            })
+    return distances  # List of mutated haps
 
-
-# Model 1: Additive fitness
-def fitness_add(population, high_fitness_string, high_fitness_value):
+# rturns sorted list
+def add_fitness(haps, model):
+    #print(haps)
     # Search for the individual with the highest fitness
     fitness_list = []
-    for indiv in range(population.shape[0]):
-        fitness_list.append(
-            [-1 * np.sum(population[indiv]), population[indiv]])  # Fitness decreases by 1 for every 1 in the haplotype.
-        # Fitness increases by args.hfv for every match in the high fitness sequences.
-    for indiv in fitness_list:
-        if high_fitness_string in arr_to_str(indiv[1]):
-            indiv[0] += high_fitness_value
+    
+    for indiv in range(haps.shape[0]):
+        if model == '1':
+            fitness_list.append({'fit': 1-1.0 * np.sum(haps[indiv])/haps.shape[1], 'hap': haps[indiv]})  # Fitness decreases by 1 for every 1 in the haplotype.
+            
+        if model == '2':
+            norm_dist = np.random.default_rng().normal(0, 1, haps.shape[0])
+            fitness_list.append({'fit': norm_dist[indiv], 'hap': haps[indiv]})
+            
+        if model == '3':
+            exp_dist = np.random.default_rng().exponential(1, haps.shape[0])
+            fitness_list.append({'fit': exp_dist[indiv], 'hap': haps[indiv]})
+
+    # sort by fitness
+    fitness_list = sorted(fitness_list, key = lambda x: x['fit'], reverse = True)
+    #print(fitness_list)
     return fitness_list  # List of [fitness, array]
-
-
-# Model 2. Epistasis with normal distribution: assign fitness by normal distribution, with mean=0 and sd=1
-def fitness_norm(population, pop_size):
-    fitness_list = []
-    norm_dist = np.random.default_rng().normal(0, 1, pop_size)
-    for indiv in range(population.shape[0]):
-        # Fitness is assigned randomly by normal distribution
-        fitness_list.append([norm_dist[indiv], population[indiv]])
-    return fitness_list  # List of [fitness, array]
-
-
-# Model 3. Epistasis, with exponential distribution: assign fitness by exponential distribution, with rate=1
-def fitness_exp(population, pop_size):
-    fitness_list = []
-    exp_dist = np.random.default_rng().exponential(1, 2*pop_size)
-    for indiv in range(population.shape[0]):
-        # Fitness is assigned randomly by exponential distribution
-        fitness_list.append([exp_dist[indiv], population[indiv]])
-    return fitness_list  # List of [fitness, array]
-
 
 class Population:
-    def __init__(self, length=20, pop=20, model='1', hfs_length=10, hfs_value=20, seed=0):
-        self.pop_size = pop
-        self.genome_length = length
-        self.generation = 0
+    def __init__(self, landscape, pop_size):
+        self.generation = 0 # initialize when called
         self.archive = None  # Contains sequences that were novel.
-        self.elite = None  # Contains each generation's 10 most fit/novel/combo individuals + their fitness value.
-        self.elite1 = None  # Top 1 individual.
-        self.model = model  # Landscape fitness model.
+        self.elite = []  # Contains each generation's 10 most fit/novel/combo individuals + their fitness value.
+        self.elite1 = []  # Top 1 individual.
+        self.pop_size = pop_size
+        self.landscape = landscape
 
-        # Initial genome: matrix with dimensions pop_size x genome_length of a single random sequence. 
-        self.genome = np.broadcast_to(np.random.default_rng(seed).integers(2, size=length), (pop, length)).copy()
+        #haps_land = [ landscape[id]['hap'] for id in landscape ] # list comprehension (foreach construct in Perl)
+        top = landscape['H000'] # most fit ind in landscape
+        #print(haps_land)
+        pick = np.random.choice(list(landscape.keys()), size = 1) # returns a list of ids
+        self.genome_length = len(landscape[pick[0]]['hap'])
+        self.highest_fitness = np.asarray(list(top['hap']), dtype = np.integer)
+        self.land_model = top['model']
+        pick_hap = landscape[pick[0]]['hap']
+        pick_fit = landscape[pick[0]]['fit']
+        self.start_hap = pick[0] 
+    
+        # starting point on the landscape
+        self.elite.append({
+            'gen': 0,
+            'land_id': pick[0],
+            'land_hap': pick_hap,
+            'land_fit': pick_fit,
+            'elite_id': pick[0],
+            'elite_hap': pick_hap,
+            'elite_fit': pick_fit 
+            })
 
-        # Strings to be used for landscape
-        self.landscape_strings = np.random.default_rng(seed + 1).integers(2, size=(2 * pop, length))
+        #print(list(pick[0]))
+        #print(len(pick[0]))
+        # Initial genome: pick a random hap from the landscape (not a random string)
+        # data structure of pop: 2D np array of np.integers (to get hamming distance)
+        self.pop = np.broadcast_to(np.asarray(list(pick_hap), dtype = np.integer), (pop_size, self.genome_length)).copy()
 
-        # Determine the landscape and highest fitness individual based on the model
-        if model == 1:
-            # Randomly generated high fitness string for the additive fitness model.
-            self.high_fitness_string = arr_to_str(np.random.default_rng(seed + 2).integers(2, size=hfs_length))
-            self.landscape = fitness_add(self.landscape_strings, self.high_fitness_string, hfs_value)
-        elif model == 2:
-            self.landscape = fitness_norm(self.landscape_strings, 2 * pop)
-        elif model == 3:
-            self.landscape = fitness_exp(self.landscape_strings, 2 * pop)
-
-        self.highest_fitness = max(self.landscape, key=lambda x: x[0])
-
-    def mutate(self, count, gen=1):
-        if count > self.genome_length or count < 1:
-            raise ValueError('Number of digits to mutate must be between 1 and the string length.')
-        for g in range(gen):
-            self.generation += 1
-            for num in range(self.pop_size):
-                # TO-DO: Random number of mutations by poisson distribution
-
-            
+    def mutate(self, mut_rate): # mutated a pop
+        #rng = default_rng
+        self.generation += 1
+        for num in range(self.pop_size): # mutate each hap
+            num_mut = np.random.default_rng().poisson(mut_rate)  # Draw a Poisson number, mostly 0, 1
+            if num_mut > self.genome_length:
+                raise ValueError('Number of digits to mutate must be between 1 and the string length.')
+            if num_mut > 0:
                 # Random indices to mutate.
-                mut_indices = np.random.default_rng().choice(self.genome_length, count, replace=False)
+                mut_indices = np.random.choice(self.genome_length, num_mut, replace=False) # force change
                 # Mutate digits
                 for i in mut_indices:
-                    if self.genome[num, i] == 0:
-                        self.genome[num, i] = 1
+                    if self.pop[num, i] == 0:
+                        self.pop[num, i] = 1
                     else:
-                        self.genome[num, i] = 0
+                        self.pop[num, i] = 0
         return
 
     def replace_pop(self):
         # Get the strings of the elite
         elite10 = [n[1] for n in self.elite]
 
-        # Create the new genome by broadcasting each individual to be 1/10 of the population size, then concatenate.
-        self.genome = np.broadcast_to(elite10[0], (self.pop_size // 10, self.genome_length))
+        # Create the new pop by broadcasting each individual to be 1/10 of the population size, then concatenate.
+        self.pop = np.broadcast_to(elite10[0], (self.pop_size // 10, self.genome_length))
         for indiv in elite10[1:]:
-            self.genome = np.concatenate(
-                (self.genome, np.broadcast_to(indiv, (self.pop_size // 10, self.genome_length))), axis=0)
+            self.pop = np.concatenate(
+                (self.pop, np.broadcast_to(indiv, (self.pop_size // 10, self.genome_length))), axis=0)
         return
 
     def objective_selection(self):
@@ -114,11 +128,14 @@ class Population:
         Fitness is determined by the hamming distance from the highest fitness string in the landscape.
         More fit means smaller hamming distance to the highest fitness string
         """
-        self.elite = sorted(arr_distances(self.highest_fitness[1], self.genome, self.genome_length),
-                            key=lambda x: x[0])[-10:]
-        self.elite1 = max(self.elite, key=lambda x: x[0])
+        #for n in range(self.pop.shape[0]):
+        #   print(dist_to_closest(self.pop[n], self.landscape))
+            
+        self.elite = sorted(dist_to_fittest(self.highest_fitness[1], self.pop, self.genome_length),
+                            key=lambda x: x['fit'])[:10]
+        #self.elite1 = max(self.elite, key=lambda x: x[0])
         # Replace the population with the 10 fittest individuals
-        self.replace_pop()
+        #self.replace_pop()
         return
 
     def novelty_search(self, nearest_neighbors=10, prob=0.10):
