@@ -69,19 +69,24 @@ logging.info(f"starting haplotype on landscape: {p.start_hap}")
 
 # Fitness file (elite.tsv): each generation's 10 highest fitness strings and fitness.
 elite = open(tagRun + '-elite.tsv', 'w')
-elite.write('gen\tland_id\tland_hap\tland_fit\telite_id\telite_hap\telite_fit\tlandscape\talgorithm\n')
+elite.write('gen\tclosest_id\tclosest_hap\tclosest_fit\telite_id\telite_hap\tdiff_closest\tdiff_fittest\tlandscape\talgorithm\n')
 #print(p.elite)
 #sys.exit()
 
 ############ search by evolution
 for n in range(args.generation):
     # Mutate 1 site
+    elite.write(f"{p.generation}\t{p.elite1['close_id']}\t{arr_to_str(p.elite1['close_hap'])}\t{p.elite1['close_fit']}\t{p.elite1['elite_id']}\t{arr_to_str(p.elite1['elite_hap'])}\t{p.elite1['diff_closest']}\t{p.elite1['diff_fittest']}\t{p.land_model}\t{args.algorithm}\n")
+
+    # end when reaches the peak
+    if p.elite1['close_id'] == 'H000':
+        break
+
     p.mutate(args.mutation_rate)
 
     if args.algorithm == '1':
         # Reproduce the 10 most fit/novel
         p.objective_selection()
-        print(p.elite)
     
     if args.algorithm == '2':
         p.novelty_selection(args.near_nabe, args.prob_arch)

@@ -14,11 +14,12 @@ def dist_to_closest(nparray, land_pop):
     for id in land_pop:
         hamming = np.sum(np.absolute(nparray - np.asarray(list(land_pop[id]['hap']), dtype = np.integer)))
         dist_to_land.append({
-            'dist': hamming,
-            'land_id': id
+            'fit': hamming,
+            'land_id': id,
+            'hap': nparray
             })
             
-    closest_id = sorted(dist_to_land, key = lambda x: x['dist'])[0]
+    closest_id = sorted(dist_to_land, key = lambda x: x['fit'])[0]
     return closest_id  # List of mutated haps
     
 def dist_to_fittest(fittest, compare_pop, genome_size):
@@ -33,7 +34,10 @@ def dist_to_fittest(fittest, compare_pop, genome_size):
             })
     return distances  # List of mutated haps
 
-# rturns sorted list
+def hap_dist_to_fittest(fittest, nparray, genome_size):
+    return np.sum(np.absolute(fittest - nparray))/genome_size
+
+# returns sorted list
 def add_fitness(haps, model):
     #print(haps)
     # Search for the individual with the highest fitness
@@ -61,7 +65,7 @@ class Population:
         self.generation = 0 # initialize when called
         self.archive = None  # Contains sequences that were novel.
         self.elite = []  # Contains each generation's 10 most fit/novel/combo individuals + their fitness value.
-        self.elite1 = []  # Top 1 individual.
+        # self.elite1 = []  # Top 1 individual.
         self.pop_size = pop_size
         self.landscape = landscape
 
@@ -72,20 +76,21 @@ class Population:
         self.genome_length = len(landscape[pick[0]]['hap'])
         self.highest_fitness = np.asarray(list(top['hap']), dtype = np.integer)
         self.land_model = top['model']
-        pick_hap = landscape[pick[0]]['hap']
+        pick_hap = np.asarray(list(landscape[pick[0]]['hap']), dtype = np.integer)
         pick_fit = landscape[pick[0]]['fit']
         self.start_hap = pick[0] 
     
         # starting point on the landscape
-        self.elite.append({
+        self.elite1 = {
             'gen': 0,
-            'land_id': pick[0],
-            'land_hap': pick_hap,
-            'land_fit': pick_fit,
+            'close_id': pick[0],
+            'close_hap': pick_hap,
+            'close_fit': pick_fit,
             'elite_id': pick[0],
             'elite_hap': pick_hap,
-            'elite_fit': pick_fit 
-            })
+            'diff_closest': 0,
+            'diff_fittest': hap_dist_to_fittest(self.highest_fitness, pick_hap, self.genome_length) 
+            }
 
         #print(list(pick[0]))
         #print(len(pick[0]))
@@ -94,7 +99,6 @@ class Population:
         self.pop = np.broadcast_to(np.asarray(list(pick_hap), dtype = np.integer), (pop_size, self.genome_length)).copy()
 
     def mutate(self, mut_rate): # mutated a pop
-        #rng = default_rng
         self.generation += 1
         for num in range(self.pop_size): # mutate each hap
             num_mut = np.random.default_rng().poisson(mut_rate)  # Draw a Poisson number, mostly 0, 1
@@ -113,11 +117,11 @@ class Population:
 
     def replace_pop(self):
         # Get the strings of the elite
-        elite10 = [n[1] for n in self.elite]
-
+        elite10 = [ n['elite_hap'] for n in self.elite ]
+        #print(elite10)
         # Create the new pop by broadcasting each individual to be 1/10 of the population size, then concatenate.
-        self.pop = np.broadcast_to(elite10[0], (self.pop_size // 10, self.genome_length))
-        for indiv in elite10[1:]:
+        #self.pop = np.broadcast_to(elite10, (self.pop_size // 10, self.genome_length))
+        for indiv in elite10:
             self.pop = np.concatenate(
                 (self.pop, np.broadcast_to(indiv, (self.pop_size // 10, self.genome_length))), axis=0)
         return
@@ -130,12 +134,28 @@ class Population:
         """
         #for n in range(self.pop.shape[0]):
         #   print(dist_to_closest(self.pop[n], self.landscape))
+
+        self.elite = []
+        id = 0
+        # select the top 10 closest to the fittest
+        elites = sorted(dist_to_fittest(self.highest_fitness, self.pop, self.genome_length), key=lambda x: x['fit'])[:10]
+        for e in elites: # top 10
+            closest = dist_to_closest(e['hap'], self.landscape)
+            self.elite.append({
+                    'gen': self.generation,
+                    'close_id': closest['land_id'],
+                    'close_fit': self.landscape[closest['land_id']]['fit'],
+                    'close_hap': self.landscape[closest['land_id']]['hap'],
+                    'elite_id': f"E{id:03d}",
+                    'elite_hap': e['hap'],
+                    'diff_closest': closest['fit'],
+                    'diff_fittest': e['fit'],
+                    })
+            id += 1
             
-        self.elite = sorted(dist_to_fittest(self.highest_fitness[1], self.pop, self.genome_length),
-                            key=lambda x: x['fit'])[:10]
-        #self.elite1 = max(self.elite, key=lambda x: x[0])
+        self.elite1 = max(self.elite, key=lambda x: x['diff_fittest'])
         # Replace the population with the 10 fittest individuals
-        #self.replace_pop()
+        self.replace_pop()
         return
 
     def novelty_search(self, nearest_neighbors=10, prob=0.10):
