@@ -10,7 +10,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument('-t', '--tag', default='test',
                     help='prefix for output files (default "test")')
 parser.add_argument('-l', '--length', type=int, default=20, help='Length of binary haplotypes. Default = 20.')
-parser.add_argument('-n', '--num_hap', type=int, default=200, help='Number of haplotypes to make the landscape. Default = 100.')
+parser.add_argument('-n', '--num_hap', type=int, default=200, help='Number of haplotypes to make the landscape. Default = 200.')
 parser.add_argument('-m', '--landscape_model', choices=['1', '2', '3'], default='1',
                     help='Model of fitness landscape.\nChoices: 1 Additive: -1 for every 1\n2 Normal: fitness decided by a normal distribution with mean=0 and sd=1.\n3 Exponental: fitness decided by an exponential distribution with rate=1.\nDefault = 1')
 args = parser.parse_args()

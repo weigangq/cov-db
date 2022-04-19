@@ -77,6 +77,7 @@ class Population:
         self.highest_fitness = np.asarray(list(top['hap']), dtype = np.integer)
         self.land_model = top['model']
         pick_hap = np.asarray(list(landscape[pick[0]]['hap']), dtype = np.integer)
+        pick_hap_str = landscape[pick[0]]['hap']
         pick_fit = landscape[pick[0]]['fit']
         self.start_hap = pick[0] 
     
@@ -84,7 +85,7 @@ class Population:
         self.elite1 = {
             'gen': 0,
             'close_id': pick[0],
-            'close_hap': pick_hap,
+            'close_hap': pick_hap_str,
             'close_fit': pick_fit,
             'elite_id': pick[0],
             'elite_hap': pick_hap,
@@ -154,6 +155,7 @@ class Population:
             id += 1
             
         self.elite1 = max(self.elite, key=lambda x: x['diff_fittest'])
+        #print(len(self.elite1['close_hap']))
         # Replace the population with the 10 fittest individuals
         self.replace_pop()
         return

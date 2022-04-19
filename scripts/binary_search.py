@@ -68,15 +68,16 @@ logging.info(f"starting haplotype on landscape: {p.start_hap}")
 #sys.exit()
 
 # Fitness file (elite.tsv): each generation's 10 highest fitness strings and fitness.
-elite = open(tagRun + '-elite.tsv', 'w')
-elite.write('gen\tclosest_id\tclosest_hap\tclosest_fit\telite_id\telite_hap\tdiff_closest\tdiff_fittest\tlandscape\talgorithm\n')
+#elite = open(tagRun + '-elite.tsv', 'w')
+#elite.write('tag\tgen\tclosest_id\tclosest_hap\tclosest_fit\telite_id\telite_hap\tdiff_closest\tdiff_fittest\tlandscape\talgorithm\n')
 #print(p.elite)
 #sys.exit()
-
+#print(p.pop[0])
 ############ search by evolution
 for n in range(args.generation):
-    # Mutate 1 site
-    elite.write(f"{p.generation}\t{p.elite1['close_id']}\t{arr_to_str(p.elite1['close_hap'])}\t{p.elite1['close_fit']}\t{p.elite1['elite_id']}\t{arr_to_str(p.elite1['elite_hap'])}\t{p.elite1['diff_closest']}\t{p.elite1['diff_fittest']}\t{p.land_model}\t{args.algorithm}\n")
+    # Mutate 1 site #print(f"{tagRun}\t{p.generation}\t{p.elite1['close_id']}\t{p.elite1['close_hap']}\t{p.elite1['close_fit']}\t{p.elite1['elite_id']}\t{arr_to_str(p.elite1['elite_hap'])}\t{p.elite1['diff_closest']}\t{p.elite1['diff_fittest']}\t{p.land_model}\t{args.algorithm}")
+
+    print(f"{tagRun}\t{p.generation}\t{p.elite1['close_id']}\t{p.elite1['close_fit']}\t{p.elite1['elite_id']}\t{p.elite1['diff_closest']}\t{p.elite1['diff_fittest']}\t{p.land_model}\t{args.algorithm}")
 
     # end when reaches the peak
     if p.elite1['close_id'] == 'H000':
@@ -94,9 +95,7 @@ for n in range(args.generation):
     if args.algorithm == '3':
         p.combo(args.weight, args.near_nabe, args.prob_arch)
     
-    #elite.write(f"{p.generation}\t{arr_to_str(p.elite1[1])}\t{p.elite1[0]:{10}.{4}}\t{p.land_model}\t{args.algorithm}\n")
-
-elite.close()
+#elite.close()
 logging.info("Elite file written")
 logging.info("Done")
 sys.exit()
