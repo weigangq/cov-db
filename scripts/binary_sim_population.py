@@ -20,6 +20,7 @@ def dist_to_closest(nparray, land_pop):
             })
             
     closest_id = sorted(dist_to_land, key = lambda x: x['fit'])[0]
+    #print(closest_id['hap'], "\t", closest_id['fit'])
     return closest_id  # List of mutated haps
     
 def dist_to_fittest(fittest, compare_pop, genome_size):
@@ -54,6 +55,10 @@ def add_fitness(haps, model):
         if model == '3':
             exp_dist = np.random.default_rng().exponential(1, haps.shape[0])
             fitness_list.append({'fit': exp_dist[indiv], 'hap': haps[indiv]})
+            
+    # there are ties if not add the zero string for additive model        
+    if model == '1':
+        fitness_list.append({'fit': 1.0, 'hap': np.zeros(haps.shape[1], dtype = int)})
 
     # sort by fitness
     fitness_list = sorted(fitness_list, key = lambda x: x['fit'], reverse = True)
@@ -72,7 +77,8 @@ class Population:
         #haps_land = [ landscape[id]['hap'] for id in landscape ] # list comprehension (foreach construct in Perl)
         top = landscape['H000'] # most fit ind in landscape
         #print(haps_land)
-        pick = np.random.choice(list(landscape.keys()), size = 1) # returns a list of ids
+        start_ids = [ n for n in list(landscape.keys()) if n != 'H000' ] # don't allow to start on the peak
+        pick = np.random.choice(start_ids, size = 1) # returns a list of ids
         self.genome_length = len(landscape[pick[0]]['hap'])
         self.highest_fitness = np.asarray(list(top['hap']), dtype = np.integer)
         self.land_model = top['model']
@@ -98,10 +104,13 @@ class Population:
         # Initial genome: pick a random hap from the landscape (not a random string)
         # data structure of pop: 2D np array of np.integers (to get hamming distance)
         self.pop = np.broadcast_to(np.asarray(list(pick_hap), dtype = np.integer), (pop_size, self.genome_length)).copy()
+        #print(self.pop.shape)
 
     def mutate(self, mut_rate): # mutated a pop
         self.generation += 1
+        #print("gen:\t", self.generation)
         for num in range(self.pop_size): # mutate each hap
+            # print("before mutation:\t", self.pop[num])
             num_mut = np.random.default_rng().poisson(mut_rate)  # Draw a Poisson number, mostly 0, 1
             if num_mut > self.genome_length:
                 raise ValueError('Number of digits to mutate must be between 1 and the string length.')
@@ -114,32 +123,34 @@ class Population:
                         self.pop[num, i] = 1
                     else:
                         self.pop[num, i] = 0
+            # print("after mutation:\t", self.pop[num])
         return
 
     def replace_pop(self):
         # Get the strings of the elite
         elite10 = [ n['elite_hap'] for n in self.elite ]
-        #print(elite10)
         # Create the new pop by broadcasting each individual to be 1/10 of the population size, then concatenate.
         #self.pop = np.broadcast_to(elite10, (self.pop_size // 10, self.genome_length))
+        self.pop = np.empty((0, self.genome_length), dtype = int) # !!! (do not use row dimension!!!)
         for indiv in elite10:
-            self.pop = np.concatenate(
-                (self.pop, np.broadcast_to(indiv, (self.pop_size // 10, self.genome_length))), axis=0)
+            self.pop = np.append(self.pop, np.broadcast_to(indiv, (self.pop_size // 10, self.genome_length)), axis=0)
         return
 
     def objective_selection(self):
         """
         Get the 10 individuals with the highest fitness and their fitness value.
-        Fitness is determined by the hamming distance from the highest fitness string in the landscape.
-        More fit means smaller hamming distance to the highest fitness string
+        Fitness is determined by the fitness of its closest (most similar genotype) string on the landscape.
         """
-        #for n in range(self.pop.shape[0]):
-        #   print(dist_to_closest(self.pop[n], self.landscape))
 
         self.elite = []
+        close_pop = []
         id = 0
-        # select the top 10 closest to the fittest
+        #print(self.generation)
+
+        '''
+        # select the top 10 closest to the fittest, pop evolves towards the fittest regardless of landscape
         elites = sorted(dist_to_fittest(self.highest_fitness, self.pop, self.genome_length), key=lambda x: x['fit'])[:10]
+        
         for e in elites: # top 10
             closest = dist_to_closest(e['hap'], self.landscape)
             self.elite.append({
@@ -153,8 +164,28 @@ class Population:
                     'diff_fittest': e['fit'],
                     })
             id += 1
+
+        '''
+        # Hill-climbing: select top 10 on the landscape (not necessarily close to the fittest in hamming distance
+        # this makes the non-additive landscapes deceptive
+        for indiv in range(self.pop.shape[0]):
+            #print(self.pop[indiv])        
+            closest = dist_to_closest(self.pop[indiv], self.landscape)
             
-        self.elite1 = max(self.elite, key=lambda x: x['diff_fittest'])
+            close_pop.append({
+                    'gen': self.generation,
+                    'close_id': closest['land_id'],
+                    'close_fit': self.landscape[closest['land_id']]['fit'],
+                    'close_hap': self.landscape[closest['land_id']]['hap'],
+                    'elite_id': f"E{id:03d}",
+                    'elite_hap': self.pop[indiv],
+                    'diff_closest': closest['fit'],
+                    'diff_fittest': hap_dist_to_fittest(self.highest_fitness, self.pop[indiv], self.genome_length)
+                    })
+            id += 1
+
+        self.elite = sorted(close_pop, key=lambda x: x['close_fit'], reverse = True)[:10]
+        self.elite1 = self.elite[0]
         #print(len(self.elite1['close_hap']))
         # Replace the population with the 10 fittest individuals
         self.replace_pop()

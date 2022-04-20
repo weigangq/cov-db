@@ -35,7 +35,7 @@ tagRun = args.tag
 logging.basicConfig(level=logging.DEBUG)
 
 # Print simulation parameters
-logging.info(f"Simulation parameters:\nLandscape file: {args.landscape_file}\nPopulation size: {args.pop_size}\n Search algorithm: {args.algorithm}")
+logging.info(f"Simulation parameters:\nLandscape file: {args.landscape_file}\n\tPopulation size: {args.pop_size}\n\tSearch algorithm: {args.algorithm}")
 
 ######## Read landscape file
 if args.landscape_file is None:
@@ -96,6 +96,6 @@ for n in range(args.generation):
         p.combo(args.weight, args.near_nabe, args.prob_arch)
     
 #elite.close()
-logging.info("Elite file written")
+#logging.info("Elite file written")
 logging.info("Done")
 sys.exit()
