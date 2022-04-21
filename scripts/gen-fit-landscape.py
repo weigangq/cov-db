@@ -9,10 +9,10 @@ parser = argparse.ArgumentParser(
     description="Generate a fitness landscape including haplotypes and their associated fitness values.Author: Winston Koh & Weigang Qiu")
 parser.add_argument('-t', '--tag', default='test',
                     help='prefix for output files (default "test")')
-parser.add_argument('-l', '--length', type=int, default=20, help='Length of binary haplotypes. Default = 20.')
-parser.add_argument('-n', '--num_hap', type=int, default=200, help='Number of haplotypes to make the landscape. Default = 200.')
-parser.add_argument('-m', '--landscape_model', choices=['1', '2', '3'], default='1',
-                    help='Model of fitness landscape.\nChoices: 1 Additive: -1 for every 1\n2 Normal: fitness decided by a normal distribution with mean=0 and sd=1.\n3 Exponental: fitness decided by an exponential distribution with rate=1.\nDefault = 1')
+parser.add_argument('-l', '--length', type=int, default=50, help='Length of binary haplotypes. Default = 20.')
+parser.add_argument('-n', '--num_hap', type=int, default=500, help='Number of haplotypes to make the landscape. Default = 200.')
+parser.add_argument('-m', '--landscape_model', choices=['1', '2', '3', '4'], default='1',
+                    help=f"Model of fitness landscape.\nChoices: 1 Additive: -1 for every 1\n2 Normal: fitness decided by a normal distribution with mean=0 and sd=1.\n3 Exponental: fitness decided by an exponential distribution with rate=1.\n4 Monotonic: increases with number of 0s\nDefault = 1")
 args = parser.parse_args()
 tagRun = args.tag
 size = args.num_hap
@@ -40,7 +40,8 @@ if model == '2':
     land_model = 'normal'
 if model == '3':
     land_model = 'exponential'
-
+if model == '4':
+    land_model = 'monotonic'
 #print(landscape)
 #highest_fitness = max(landscape, key=lambda x: x[0])
 

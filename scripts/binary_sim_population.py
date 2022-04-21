@@ -56,6 +56,15 @@ def add_fitness(haps, model):
             exp_dist = np.random.default_rng().exponential(1, haps.shape[0])
             fitness_list.append({'fit': exp_dist[indiv], 'hap': haps[indiv]})
             
+    if model == '4': # monotonically decrease with the number of 1's
+        norm_dist = np.random.default_rng().normal(0, 1, haps.shape[0])
+        hap_sorted = sorted(haps, key = lambda x: np.sum(x), reverse = True)
+        norm_dist = sorted(norm_dist)
+        #print(norm_dist)
+        #print(hap_sorted)
+        for i in range(haps.shape[0]):
+            fitness_list.append({'fit': norm_dist[i], 'hap': hap_sorted[i]})
+            
     # there are ties if not add the zero string for additive model        
     if model == '1':
         fitness_list.append({'fit': 1.0, 'hap': np.zeros(haps.shape[1], dtype = int)})
