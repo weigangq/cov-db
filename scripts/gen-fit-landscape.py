@@ -49,7 +49,7 @@ if model == '4':
 width = 10
 precision = 4
 with open(tagRun + '-' + land_model + '-landscape.tsv', 'w') as landscape_file:
-    landscape_file.write('ranked_id\thap\tfit\tmodel\n')
+    landscape_file.write(f"ranked_id\thap\tfit\tmodel\n")
     id = 0
     for n in landscape:
         landscape_file.write(f"H{id:03d}\t{arr_to_str(n['hap'])}\t{n['fit']:{width}.{precision}}\t{land_model}\n")
