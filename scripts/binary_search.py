@@ -26,7 +26,7 @@ parser.add_argument('-alg', '--algorithm', choices=['1', '2', '3'], default='1',
 parser.add_argument('-n', '--nearest_neighbors', type=int, default=10,
                     help='Number of nearest neighbors to use in novelty search. Default = 10.')
 
-parser.add_argument('-prob', '--archive_prob', type=float, default=0.1, help='Probability for an individual to get randomly added to the archive during novelty search. Default = 0.1.')
+parser.add_argument('-prob', '--prob_arch', type=float, default=0.1, help='Probability for an individual to get randomly added to the archive during novelty search. Default = 0.1.')
 
 parser.add_argument('-w', '--weight', type=float, default=0.5, help='Weight for the combo algorithm. Weight value is between 0 and 1. Closer to 1 means more bias towards novelty. Default = 0.5.')
 
@@ -74,9 +74,11 @@ logging.info(f"starting haplotype on landscape: {p.start_hap}")
 #sys.exit()
 #print(p.pop[0])
 ############ search by evolution
+
+print(f"Tag\tGen\tcl_id\tcl_fit\te1_id\tdiff_cl\tdiff_fit\tmodel\talgo")
+
 for n in range(args.generation):
     # Mutate 1 site #print(f"{tagRun}\t{p.generation}\t{p.elite1['close_id']}\t{p.elite1['close_hap']}\t{p.elite1['close_fit']}\t{p.elite1['elite_id']}\t{arr_to_str(p.elite1['elite_hap'])}\t{p.elite1['diff_closest']}\t{p.elite1['diff_fittest']}\t{p.land_model}\t{args.algorithm}")
-
     print(f"{tagRun}\t{p.generation}\t{p.elite1['close_id']}\t{p.elite1['close_fit']}\t{p.elite1['elite_id']}\t{p.elite1['diff_closest']}\t{p.elite1['diff_fittest']}\t{p.land_model}\t{args.algorithm}")
 
     # end when reaches the peak
@@ -90,10 +92,10 @@ for n in range(args.generation):
         p.objective_selection()
     
     if args.algorithm == '2':
-        p.novelty_selection(args.near_nabe, args.prob_arch)
+        p.novelty_selection(args.nearest_neighbors, args.prob_arch)
 
     if args.algorithm == '3':
-        p.combo(args.weight, args.near_nabe, args.prob_arch)
+        p.combo(args.weight, args.nearest_neighbors, args.prob_arch)
     
 #elite.close()
 #logging.info("Elite file written")
