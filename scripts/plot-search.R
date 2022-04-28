@@ -48,25 +48,41 @@ plot.land <- function(proj_file, df_end) {
 
 ############################
 ## Objective search outputs
-x <- read_tsv("objective-search-2-landscapes.tsv", col_names = F)
-colnames(x) <- c("tag", "gen", "close_id", "close_fit", "elite_id", "diff_close", "diff_fit", "landscape", "search_algorithm")
+x1 <- read_tsv("objective-search-2-landscapes.tsv", col_names = F)
+colnames(x1) <- c("tag", "gen", "close_id", "close_fit", "elite_id", "diff_close", "diff_fit", "landscape", "search_algorithm")
 
-x.max.fit <- x %>% group_by(landscape) %>% summarise(max = max(close_fit))
+x2 <- read_tsv("novelty-search-2-landscapes.tsv2", col_names = F)
+colnames(x2) <- c("tag", "gen", "close_id", "close_fit", "elite_id", "diff_close", "diff_fit", "landscape", "search_algorithm")
+
+x3 <- read_tsv("combo-search-2-landscapes.tsv2", col_names = F)
+colnames(x3) <- c("tag", "gen", "close_id", "close_fit", "elite_id", "diff_close", "diff_fit", "landscape", "search_algorithm")
+
+x <- bind_rows(x1, x2, x3)
+x.max.fit <- x %>% group_by(landscape, search_algorithm) %>% summarise(max = max(close_fit))
 x.end <- x %>% filter(close_id == 'H000')
 x.last <- x %>% group_by(tag) %>% 
   summarise(gen = max(gen)) %>% 
   left_join(x, c("tag", "gen")) %>%
   filter(close_id != 'H000')
 
+x %>% filter(tag %in% paste("norm-", 1:10, sep="")) %>% 
+  ggplot(aes(x = gen, y = close_fit, group = tag)) + 
+  geom_line() + 
+  facet_grid(rows = vars(tag), cols = vars(search_algorithm)) + 
+  theme_bw() +
+  geom_hline(yintercept = 3.09, linetype = 2, color = 2) + 
+  geom_hline(yintercept = 0, linetype = 2) +
+  labs(title = "Normal landscape: novelty search is able to cross deep valleys")
+
 x %>% ggplot(aes(x = gen, y = close_fit, group = tag )) + 
   geom_line() + 
   geom_point(data = x.end, aes(gen, close_fit), shape =1, color = 2) +
   geom_point(data = x.last, aes(gen, close_fit), shape = 1, color = 1) +
-  facet_wrap(~landscape) + 
+  facet_wrap(~tag) + 
   theme_bw() +
   geom_hline(data = x.max.fit, aes(yintercept = max), linetype = 2, color = 2) + 
   geom_hline(yintercept = 0, linetype = 2) + 
-  labs(title = "Objective search: random fitness lanscape is deceptive", subtitle = "pop size:100; genome size: 50 bits; fitness: Normal (0,1); evolve for max 100 generations; 20 runs on each landscape")
+  labs(title = "Combo search")
 
 x %>% group_by(tag, landscape) %>% 
   summarise(gen = max(gen)) %>% 
