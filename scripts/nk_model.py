@@ -126,7 +126,7 @@ for i in range(10):
 NK_items.sort(key=lambda x: x[-1], reverse=True)
 """
 
-with open(f'output.txt', 'w') as f:
+with open('nk-landscape.tsv', 'w') as f:
     f.write("ranked_id\thap\tfit\tmodel\n")
     # Rank haps
     h_id = 0
