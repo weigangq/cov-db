@@ -25,7 +25,7 @@ parser.add_argument('-alg', '--algorithm', choices=['1', '2', '3'], default='1',
 parser.add_argument('-n', '--nearest_neighbors', type=int, default=10,
                     help='Number of nearest neighbors to use in novelty search. Default = 10.')
 
-parser.add_argument('-arch', '--archive_method', type=int, default=2,
+parser.add_argument('-arch', '--archive_method', choices=['1', '2'], default='1',
                     help='Method to use for selecting what to add to the archive. 1. Fixed size, random archive. 2. Adaptive threshold. Default = 1.')
 
 parser.add_argument('-prob', '--prob_arch', type=float, default=0.1, help='Probability for an individual to get randomly added to the archive during novelty search method 1. Default = 0.1.')
@@ -70,8 +70,8 @@ logging.info(f"starting haplotype on landscape: {p.start_hap}")
 #sys.exit()
 
 # Fitness file (elite.tsv): each generation's 10 highest fitness strings and fitness.
-#elite = open(tagRun + '-elite.tsv', 'w')
-#elite.write('tag\tgen\tclosest_id\tclosest_hap\tclosest_fit\telite_id\telite_hap\tdiff_closest\tdiff_fittest\tlandscape\talgorithm\n')
+elite = open(tagRun + '-elite.tsv', 'w')
+elite.write('tag\tgen\tclosest_id\tclosest_hap\tclosest_fit\telite_id\telite_hap\tdiff_closest\tdiff_fittest\tlandscape\talgorithm\n')
 #print(p.elite)
 #sys.exit()
 #print(p.pop[0])
@@ -82,6 +82,8 @@ print(f"Tag\tGen\tcl_id\tcl_fit\te1_id\tdiff_cl\tdiff_fit\tmodel\talgo")
 for n in range(args.generation):
     # Mutate 1 site #print(f"{tagRun}\t{p.generation}\t{p.elite1['close_id']}\t{p.elite1['close_hap']}\t{p.elite1['close_fit']}\t{p.elite1['elite_id']}\t{arr_to_str(p.elite1['elite_hap'])}\t{p.elite1['diff_closest']}\t{p.elite1['diff_fittest']}\t{p.land_model}\t{args.algorithm}")
     print(f"{tagRun}\t{p.generation}\t{p.elite1['close_id']}\t{p.elite1['close_fit']}\t{p.elite1['elite_id']}\t{p.elite1['diff_closest']}\t{p.elite1['diff_fittest']}\t{p.land_model}\t{args.algorithm}")
+    
+    elite.write(f"{tagRun}\t{p.generation}\t{p.elite1['close_id']}\t{p.elite1['close_fit']}\t{p.elite1['elite_id']}\t{p.elite1['diff_closest']}\t{p.elite1['diff_fittest']}\t{p.land_model}\t{args.algorithm}\n")
 
     # end when reaches the peak
     if p.elite1['close_id'] == 'H000':
@@ -99,7 +101,7 @@ for n in range(args.generation):
     if args.algorithm == '3':
         p.combo(args.weight, args.nearest_neighbors, args.archive_method, args.prob_arch)
     
-#elite.close()
+elite.close()
 #logging.info("Elite file written")
 logging.info("Done")
 sys.exit()
