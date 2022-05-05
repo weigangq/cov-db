@@ -74,9 +74,14 @@ def normalize(array):
 
 # Change parameters to get fitness landscape of different variable site.
 parser = argparse.ArgumentParser(description = 'Add number of variable sites')
-parser.add_argument('N', type=int, help='Number of variable sites')
+parser.add_argument('-N', type=int, help='Number of variable sites')
+
+# Change number of haplotypes in output
+parser.add_argument('-hap_num', type=int, help='Number of haplotypes in output')
 args = parser.parse_args()
+
 N = args.N
+hap_num = args.hap_num
 
 # Create NK fitness landscape
 NK_landscape_list = {i:[] for i in range(1, 51)}
@@ -98,21 +103,16 @@ for i in range(1,2):
         # Normalize fitness in FL
         NK_landscape_list[i][j][:,N] = normalize(NK_landscape_list[i][j][:,N])
 
-# Take only unique haplotypes
+# Combine haplotype and its corresponding fitness
 NK_items = []
 unique_haps = []
 for k in range(NK_landscape_list[1][0].shape[0]):
     haps = [str(int(n)) for n in NK_landscape_list[1][0][k][0:10]]
     haps = "".join(haps)
-    if haps in unique_haps:
-        continue
-    else:
-        unique_haps.append(haps)
-        NK_items.append((haps, NK_landscape_list[1][0][k][-1]))
+    NK_items.append((haps, NK_landscape_list[1][0][k][-1]))
 NK_items.sort(key=lambda x: x[-1], reverse=True)
 
-# Take only 200 haplotypes with unique fitness values
-hap_num = 200
+# Take only certain number of haplotypes with unique fitness values
 pos = len(NK_items)/hap_num
 pos = int(pos)
 NK_list = []
