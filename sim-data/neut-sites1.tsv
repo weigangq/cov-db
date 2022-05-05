@@ -1,0 +1,80 @@
+neut	1	Seq_1_1	
+neut	1	Seq_1_2	
+neut	1	Seq_1_3	13090_T_mis
+neut	1	Seq_1_4	
+neut	1	Seq_1_5	
+neut	1	Seq_1_6	
+neut	1	Seq_1_7	
+neut	1	Seq_1_8	
+neut	1	Seq_1_9	
+neut	1	Seq_1_10	
+neut	1	Seq_1_11	
+neut	1	Seq_1_12	9403_G_mis|5910_A_non
+neut	1	Seq_1_13	
+neut	1	Seq_1_14	
+neut	1	Seq_1_15	24637_A_mis
+neut	1	Seq_1_16	
+neut	1	Seq_1_17	10989_G_syn
+neut	1	Seq_1_18	
+neut	1	Seq_1_19	
+neut	1	Seq_1_20	
+neut	2	Seq_2_1	
+neut	2	Seq_2_2	
+neut	2	Seq_2_3	
+neut	2	Seq_2_4	
+neut	2	Seq_2_5	13508_T_syn
+neut	2	Seq_2_6	
+neut	2	Seq_2_7	
+neut	2	Seq_2_8	
+neut	2	Seq_2_9	15401_T_mis
+neut	2	Seq_2_10	
+neut	2	Seq_2_11	
+neut	2	Seq_2_12	
+neut	2	Seq_2_13	
+neut	2	Seq_2_14	
+neut	2	Seq_2_15	13686_C_mis
+neut	2	Seq_2_16	
+neut	2	Seq_2_17	
+neut	2	Seq_2_18	
+neut	2	Seq_2_19	
+neut	2	Seq_2_20	16551_C_mis
+neut	3	Seq_3_1	
+neut	3	Seq_3_2	24637_A_mis
+neut	3	Seq_3_3	
+neut	3	Seq_3_4	12802_C_mis
+neut	3	Seq_3_5	
+neut	3	Seq_3_6	
+neut	3	Seq_3_7	
+neut	3	Seq_3_8	
+neut	3	Seq_3_9	2697_C_syn
+neut	3	Seq_3_10	18347_A_syn
+neut	3	Seq_3_11	
+neut	3	Seq_3_12	15401_T_mis
+neut	3	Seq_3_13	
+neut	3	Seq_3_14	
+neut	3	Seq_3_15	
+neut	3	Seq_3_16	
+neut	3	Seq_3_17	23445_T_mis
+neut	3	Seq_3_18	
+neut	3	Seq_3_19	8085_G_syn
+neut	3	Seq_3_20	
+neut	313	Seq_313_1	3889_A_mis|13076_T_mis|1105_G_mis|7437_C_syn|23493_G_syn|10403_A_mis|13030_G_mis|20591_C_syn|18721_G_mis|26425_C_mis|13967_T_syn|5311_T_mis|15084_G_mis|22474_G_mis|1697_T_mis|10994_C_mis|24649_C_mis|10157_C_mis|27839_G_mis|16954_C_mis|16888_G_mis|5298_C_syn|17322_C_syn|28579_A_mis|27464_C_syn|10157_T_syn|22624_T_mis|25325_C_mis|7909_C_mis|851_T_mis
+neut	313	Seq_313_2	3889_A_mis|13076_T_mis|1105_G_mis|7437_C_syn|23493_G_syn|10403_A_mis|13030_G_mis|20591_C_syn|18721_G_mis|26425_C_mis|13967_T_syn|5311_T_mis|15084_G_mis|22474_G_mis|1697_T_mis|10994_C_mis|24649_C_mis|10157_C_mis|27839_G_mis|16954_C_mis|16888_G_mis|5298_C_syn|17322_C_syn|28579_A_mis|27464_C_syn|10157_T_syn|22624_T_mis|25325_C_mis|14560_G_mis
+neut	313	Seq_313_3	3889_A_mis|453_G_syn|13491_T_mis|12856_C_mis|8208_C_syn|15310_T_mis|1667_G_mis|16210_A_mis|22328_T_mis|14803_T_mis|11163_C_syn|10921_A_mis|2461_T_syn|25743_G_mis|29693_G_NA|3092_T_mis|20280_C_mis|21447_A_mis|6128_C_mis|14475_C_mis|12973_A_mis|1855_G_mis|9870_A_syn|20770_C_mis|5744_T_mis|13715_C_syn|13062_T_syn|13379_G_mis|12751_G_mis|28079_A_mis|20035_G_mis|10210_G_mis|29425_G_mis|13605_A_mis|5755_C_mis|9225_T_syn|5677_T_mis|26801_C_mis|479_T_mis|6334_C_mis|12033_C_syn
+neut	313	Seq_313_4	3889_A_mis|13076_T_mis|1105_G_mis|7437_C_syn|23493_G_syn|10403_A_mis|13030_G_mis|20591_C_syn|18721_G_mis|26425_C_mis|13967_T_syn|5311_T_mis|15084_G_mis|22474_G_mis|1697_T_mis|10994_C_mis|24649_C_mis|10157_C_mis|27839_G_mis|16954_C_mis|16888_G_mis|5298_C_syn|17322_C_syn|28579_A_mis|27464_C_syn|10157_T_syn|23476_A_mis|5827_G_mis
+neut	313	Seq_313_5	3889_A_mis|453_G_syn|13491_T_mis|12856_C_mis|8208_C_syn|15310_T_mis|1667_G_mis|16210_A_mis|22328_T_mis|14803_T_mis|11163_C_syn|10921_A_mis|2461_T_syn|25743_G_mis|29693_G_NA|3092_T_mis|20280_C_mis|21447_A_mis|6128_C_mis|14475_C_mis|12973_A_mis|1855_G_mis|9870_A_syn|20770_C_mis|5744_T_mis|13715_C_syn|13062_T_syn|13379_G_mis|12751_G_mis|28079_A_mis|20035_G_mis|10210_G_mis|29425_G_mis|16426_G_mis|27706_T_mis|9505_G_mis|10031_T_mis|1768_C_mis|26275_T_mis
+neut	313	Seq_313_6	3889_A_mis|13076_T_mis|1105_G_mis|7437_C_syn|23493_G_syn|10403_A_mis|13030_G_mis|20591_C_syn|18721_G_mis|26425_C_mis|13967_T_syn|5311_T_mis|15084_G_mis|22474_G_mis|1697_T_mis|10994_C_mis|24649_C_mis|10157_C_mis|27839_G_mis|16954_C_mis|16888_G_mis|5298_C_syn|17322_C_syn|28579_A_mis|27464_C_syn|10157_T_syn|23476_A_mis|13150_G_mis
+neut	313	Seq_313_7	3889_A_mis|13076_T_mis|1105_G_mis|7437_C_syn|23493_G_syn|10403_A_mis|13030_G_mis|20591_C_syn|18721_G_mis|26425_C_mis|13967_T_syn|5311_T_mis|15084_G_mis|22474_G_mis|1697_T_mis|10994_C_mis|24649_C_mis|10157_C_mis|27839_G_mis|16954_C_mis|16888_G_mis|5298_C_syn|17322_C_syn|28579_A_mis|27464_C_syn|10157_T_syn|22624_T_mis|25325_C_mis|18784_G_mis
+neut	313	Seq_313_8	3889_A_mis|13076_T_mis|1105_G_mis|7437_C_syn|23493_G_syn|10403_A_mis|13030_G_mis|20591_C_syn|18721_G_mis|26425_C_mis|13967_T_syn|5311_T_mis|15084_G_mis|22474_G_mis|1697_T_mis|10994_C_mis|24649_C_mis|10157_C_mis|27839_G_mis|16954_C_mis|16888_G_mis|5298_C_syn|17322_C_syn|28579_A_mis|27464_C_syn|10157_T_syn|23476_A_mis|23919_T_mis
+neut	313	Seq_313_9	3889_A_mis|13076_T_mis|1105_G_mis|7437_C_syn|23493_G_syn|10403_A_mis|13030_G_mis|20591_C_syn|18721_G_mis|26425_C_mis|13967_T_syn|5311_T_mis|15084_G_mis|22474_G_mis|1697_T_mis|10994_C_mis|24649_C_mis|10157_C_mis|27839_G_mis|16954_C_mis|16888_G_mis|5298_C_syn|17322_C_syn|28579_A_mis|27464_C_syn|10401_C_syn|28464_A_syn|14597_A_mis
+neut	313	Seq_313_10	3889_A_mis|453_G_syn|13491_T_mis|12856_C_mis|8208_C_syn|15310_T_mis|1667_G_mis|16210_A_mis|22328_T_mis|14803_T_mis|11163_C_syn|10921_A_mis|2461_T_syn|25743_G_mis|29693_G_NA|3092_T_mis|20280_C_mis|21447_A_mis|6128_C_mis|14475_C_mis|12973_A_mis|1855_G_mis|9870_A_syn|20770_C_mis|5744_T_mis|13715_C_syn|13062_T_syn|13379_G_mis|12751_G_mis|28079_A_mis|20035_G_mis|10210_G_mis|29425_G_mis|16426_G_mis|23874_C_syn|2164_G_mis
+neut	313	Seq_313_11	3889_A_mis|13076_T_mis|1105_G_mis|7437_C_syn|23493_G_syn|10403_A_mis|13030_G_mis|20591_C_syn|18721_G_mis|26425_C_mis|13967_T_syn|5311_T_mis|15084_G_mis|22474_G_mis|1697_T_mis|10994_C_mis|24649_C_mis|10157_C_mis|27839_G_mis|16954_C_mis|16888_G_mis|5298_C_syn|17322_C_syn|28579_A_mis|27464_C_syn|10157_T_syn|23476_A_mis|23919_T_mis|8323_A_mis
+neut	313	Seq_313_12	3889_A_mis|13076_T_mis|1105_G_mis|7437_C_syn|23493_G_syn|10403_A_mis|13030_G_mis|20591_C_syn|18721_G_mis|26425_C_mis|13967_T_syn|5311_T_mis|15084_G_mis|22474_G_mis|1697_T_mis|10994_C_mis|24649_C_mis|10157_C_mis|27839_G_mis|16954_C_mis|16888_G_mis|5298_C_syn|17322_C_syn|28579_A_mis|27464_C_syn|10157_T_syn|23476_A_mis|12343_G_mis
+neut	313	Seq_313_13	3889_A_mis|13076_T_mis|1105_G_mis|7437_C_syn|23493_G_syn|10403_A_mis|13030_G_mis|20591_C_syn|18721_G_mis|26425_C_mis|13967_T_syn|5311_T_mis|15084_G_mis|22474_G_mis|1697_T_mis|10994_C_mis|24649_C_mis|10157_C_mis|27839_G_mis|16954_C_mis|16888_G_mis|5298_C_syn|17322_C_syn|28579_A_mis|27464_C_syn|10157_T_syn|23476_A_mis|16786_A_mis|29711_G_NA|8136_A_syn
+neut	313	Seq_313_14	3889_A_mis|13076_T_mis|1105_G_mis|7437_C_syn|23493_G_syn|10403_A_mis|13030_G_mis|20591_C_syn|18721_G_mis|26425_C_mis|13967_T_syn|5311_T_mis|15084_G_mis|22474_G_mis|1697_T_mis|10994_C_mis|24649_C_mis|10157_C_mis|27839_G_mis|16954_C_mis|16888_G_mis|5298_C_syn|17322_C_syn|28579_A_mis|27464_C_syn|10157_T_syn|23476_A_mis|13150_G_mis
+neut	313	Seq_313_15	15110_G_syn|19203_A_mis|19902_G_mis|16021_G_mis|4090_G_mis|21795_A_syn|6534_C_syn|21071_C_syn|25654_A_mis|18032_C_syn|14224_T_mis|5838_G_syn|4761_G_syn|28052_C_mis|10849_C_mis|26722_C_syn|26285_C_syn|3249_T_mis|8854_C_mis|22956_A_syn|3480_G_syn|11317_A_mis|13444_A_mis|11094_A_syn|6800_C_mis|23741_C_mis|22096_A_mis|29192_G_mis|2369_T_mis
+neut	313	Seq_313_16	3889_A_mis|453_G_syn|13491_T_mis|12856_C_mis|8208_C_syn|15310_T_mis|1667_G_mis|16210_A_mis|22328_T_mis|14803_T_mis|11163_C_syn|10921_A_mis|2461_T_syn|25743_G_mis|29693_G_NA|5444_G_mis|27604_C_mis|17167_T_mis|15466_G_mis|25514_T_syn|14267_A_syn|10928_T_mis|15988_T_mis|21448_G_mis|11867_T_mis|8124_A_syn|11344_A_mis|26863_T_syn|9239_T_mis|22362_A_syn|10171_G_mis|28707_T_syn|9440_A_mis|14598_T_syn|29287_C_syn
+neut	313	Seq_313_17	3889_A_mis|453_G_syn|13491_T_mis|12856_C_mis|8208_C_syn|15310_T_mis|1667_G_mis|16210_A_mis|22328_T_mis|14803_T_mis|11163_C_syn|10921_A_mis|2461_T_syn|25743_G_mis|29693_G_NA|3092_T_mis|20280_C_mis|21447_A_mis|6128_C_mis|14475_C_mis|12973_A_mis|1855_G_mis|9870_A_syn|20770_C_mis|5744_T_mis|13715_C_syn|13062_T_syn|13379_G_mis|12751_G_mis|28079_A_mis|20035_G_mis|10210_G_mis|29425_G_mis|16426_G_mis|27706_T_mis|9505_G_mis|10031_T_mis|16438_C_mis
+neut	313	Seq_313_18	3889_A_mis|453_G_syn|13491_T_mis|12856_C_mis|8208_C_syn|15310_T_mis|1667_G_mis|16210_A_mis|22328_T_mis|14803_T_mis|11163_C_syn|10921_A_mis|2461_T_syn|25743_G_mis|29693_G_NA|5444_G_mis|27604_C_mis|17167_T_mis|15466_G_mis|25514_T_syn|14267_A_syn|10928_T_mis|15988_T_mis|21448_G_mis|11867_T_mis|8124_A_syn|11344_A_mis|26863_T_syn|9239_T_mis|22362_A_syn|10171_G_mis|28707_T_syn|9440_A_mis|12386_C_mis
+neut	313	Seq_313_19	3889_A_mis|453_G_syn|13491_T_mis|12856_C_mis|8208_C_syn|15310_T_mis|1667_G_mis|16210_A_mis|22328_T_mis|14803_T_mis|11163_C_syn|10921_A_mis|2461_T_syn|25743_G_mis|29693_G_NA|3092_T_mis|20280_C_mis|21447_A_mis|6128_C_mis|14475_C_mis|12973_A_mis|1855_G_mis|9870_A_syn|20770_C_mis|5744_T_mis|13715_C_syn|13062_T_syn|13379_G_mis|12751_G_mis|28079_A_mis|20035_G_mis|10210_G_mis|29425_G_mis|13605_A_mis|5755_C_mis|22886_C_mis|844_A_mis
+neut	313	Seq_313_20	3889_A_mis|453_G_syn|13491_T_mis|12856_C_mis|8208_C_syn|15310_T_mis|1667_G_mis|16210_A_mis|22328_T_mis|14803_T_mis|11163_C_syn|10921_A_mis|2461_T_syn|25743_G_mis|29693_G_NA|3092_T_mis|20280_C_mis|21447_A_mis|6128_C_mis|14475_C_mis|12973_A_mis|1855_G_mis|9870_A_syn|20770_C_mis|5744_T_mis|13715_C_syn|13062_T_syn|13379_G_mis|12751_G_mis|28079_A_mis|20035_G_mis|10210_G_mis|29425_G_mis|16426_G_mis|27706_T_mis|9505_G_mis|10031_T_mis|16438_C_mis

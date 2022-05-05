@@ -25,7 +25,7 @@ parser.add_argument('-alg', '--algorithm', choices=['1', '2', '3'], default='1',
 parser.add_argument('-n', '--nearest_neighbors', type=int, default=10,
                     help='Number of nearest neighbors to use in novelty search. Default = 10.')
 
-parser.add_argument('-arch', '--archive_method', type=int, default=2,
+parser.add_argument('-arch', '--archive_method', type=int, default=1,
                     help='Method to use for selecting what to add to the archive. 1. Fixed size, random archive. 2. Adaptive threshold. Default = 1.')
 
 parser.add_argument('-prob', '--prob_arch', type=float, default=0.1, help='Probability for an individual to get randomly added to the archive during novelty search method 1. Default = 0.1.')
