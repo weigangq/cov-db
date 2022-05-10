@@ -24,7 +24,8 @@ args = parser.parse_args()
 N = args.N
 hap_num = args.hap_num
 
-# NK landscape ---------------------------------------------------------------
+# Landscapes --------------------------------------------------------------------
+# NK landscape
 def nk():
     # Functions to generate interaction matrices
     def imatrix_rand(N, K):
@@ -102,7 +103,6 @@ def nk():
 
     # Combine haplotype and its corresponding fitness
     NK_items = []
-    unique_haps = []
     for k in range(NK_landscape_list[1][0].shape[0]):
         haps = [str(int(n)) for n in NK_landscape_list[1][0][k][0:-1]]
         haps = "".join(haps)
@@ -115,9 +115,9 @@ def nk():
     NK_list = []
     for i in range(0, hap_num):
         NK_list.append(NK_items[pos * i])
-    return NK_list
+    return NK_list, NK_landscape_list[1][0]
 
-# RMF landscape --------------------------------------------------------------
+# RMF landscape
 def rmf():
     # Fitness function
     # F(gt) = -cD(wt,gt)+N(std)
@@ -129,7 +129,7 @@ def rmf():
     gt_lst = np.array(list(map(list, itertools.product([0, 1], repeat=N))))
 
     # Create Polynomial fitness landscape
-    RMF_landscape = []
+    RMF_landscape_list = {i:[] for i in range(1,2)}
     for idx in range(1,2,2):
         for std in [10/n for n in range(1,2)]: # std is sampled from 0.5 to 10
             wt = nrand.randint(2,size=N) # Set wildtype genotype
@@ -142,34 +142,94 @@ def rmf():
             MAX = np.max(fitness_lst)
             fitness_lst = (fitness_lst - MIN) / (MAX - MIN)
 
-            # Combine haplotype with its fitness
-            for i in range(0,len(gt_lst)):
-                hap = np.array2string(gt_lst[i]).strip('[]').replace(' ', '')
-                RMF_landscape.append((hap, fitness_lst[i]))
-    RMF_landscape.sort(key=lambda x: x[-1], reverse=True)
+            # Combine fitness to genotype 0-1 space
+            fitness_landscape = np.concatenate((gt_lst, fitness_lst.reshape([-1, 1])), axis=1)
+
+            # if there are 10 landscapes in the current RMF_landscape_list[idx],
+            # go to the next idx
+            if len(RMF_landscape_list[idx]) < 10:
+                RMF_landscape_list[idx].append(fitness_landscape)
+            else:
+                RMF_landscape_list[idx + 1].append(fitness_landscape)
+
+    # Combine haplotype and its corresponding fitness
+    RMF_items = []
+    for k in range(RMF_landscape_list[1][0].shape[0]):
+        haps = [str(int(n)) for n in RMF_landscape_list[1][0][k][0:-1]]
+        haps = "".join(haps)
+        RMF_items.append((haps, RMF_landscape_list[1][0][k][-1]))
+    RMF_items.sort(key=lambda x: x[-1], reverse=True)
 
     # Take only certain number of haplotypes with unique fitness values as output
-    pos = len(RMF_landscape)/hap_num
+    pos = len(RMF_items) / hap_num
     pos = int(pos)
     RMF_list = []
-    for i in range(0,hap_num):
-        RMF_list.append(RMF_landscape[pos*i])
-    return RMF_list
+    for i in range(0, hap_num):
+        RMF_list.append(RMF_items[pos * i])
+    return RMF_list, RMF_landscape_list[1][0]
+
+# Ruggedness -------------------------------------------------------
+# Number of maxima (N max)
+def get_N_max(landscape):
+    N = landscape.shape[1] - 1
+    N_max = 0
+    for gt in landscape:
+        seq = gt[0:N]
+        fit = gt[N]
+        flag = True
+        for i,_ in enumerate(seq):
+            seq_ = copy.deepcopy(seq)
+            seq_[i] = 1 - seq_[i]
+            tmp = ''.join(seq_.astype(int).astype(str))
+            idx = int(tmp, 2)
+            fit_ = landscape[idx,N]
+            if fit < fit_:
+                flag = False
+                break
+        if flag == True:
+            N_max += 1
+    return N_max
+
+# Roughness to slope ratio (r/s)
+from sklearn.linear_model import LinearRegression
+def cal_r_s(landscape):
+    N = landscape.shape[1] - 1
+    X = landscape[:,:N]
+    y = landscape[:,-1]
+    reg = LinearRegression().fit(X, y) # fit_intercept default=True
+    y_predict = reg.predict(landscape[:,:N])
+    roughness = np.sqrt(np.mean(np.square(y - y_predict)))
+    slope = np.mean(np.abs(reg.coef_))
+    return roughness/slope
 
 # Save output -------------------------------------------------------------------
+# out_land is for landscape, out_rug if for ruggedness
 if args.model == 'nk':
     model_name = 'nk'
-    out_df = nk()
+    out_land = nk()[0]
+    out_rug = nk()[1]
 
 if args.model == 'rmf':
     model_name = 'rmf'
-    out_df = rmf()
+    out_land = rmf()[0]
+    out_rug = rmf()[1]
 
-outFile = model_name + "-landscape.tsv"
-with open(outFile, 'w') as f:
+outFile_land = model_name + "-landscape.tsv"
+with open(outFile_land, 'w') as f:
     f.write("ranked_id\thap\tfit\tmodel\n")
     # Rank haps
     h_id = 0
-    for n in out_df:
+    for n in out_land:
         f.write(f"H{h_id:03d}\t{n[0]}\t{n[1]}\t{model_name}\n")
+        h_id += 1
+
+outFile_rug = model_name + "-ruggedness.tsv"
+with open(outFile_rug, 'w') as f:
+    f.write(f"N_max\t{get_N_max(out_rug)}\n")
+    #f.write(f"Frse\t{cal_epi(out_rug)}\n")
+    f.write(f"r/s\t{cal_r_s(out_rug)}\n")
+    #f.write(f"Fbp\t{cal_open_ratio(out_rug)}\n")
+    f.write("hap\tfit\tmodel\n")
+    for n in out_rug:
+        f.write(f"{n[0:-2]}\t{n[-1]}\t{model_name}\n")
         h_id += 1
