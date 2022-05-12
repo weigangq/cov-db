@@ -218,19 +218,18 @@ if args.model == 'rmf':
 
 outFile_land = model_name + "-landscape.tsv"
 with open(outFile_land, 'w') as f:
-    f.write("ranked_id\thap\tfit\tmodel\n")
+    f.write("ranked_id\thap\tfit\tmodel\tN_max\tr/s\n")
     # Rank haps
     h_id = 0
     for n in out_land:
-        f.write(f"H{h_id:03d}\t{n[0]}\t{n[1]}\t{model_name}\n")
+        f.write(f"H{h_id:03d}\t{n[0]}\t{n[1]}\t{model_name}\t{get_N_max(out_rug)}\t{cal_r_s(out_rug)}\n")
         h_id += 1
+
 '''
 outFile_rug = model_name + "-ruggedness.tsv"
 with open(outFile_rug, 'w') as f:
     f.write(f"N_max\t{get_N_max(out_rug)}\n")
-    #f.write(f"Frse\t{cal_epi(out_rug)}\n")
     f.write(f"r/s\t{cal_r_s(out_rug)}\n")
-    #f.write(f"Fbp\t{cal_open_ratio(out_rug)}\n")
     f.write("hap\tfit\tmodel\n")
     for n in out_rug:
         f.write(f"{n[0:-2]}\t{n[-1]}\t{model_name}\n")
