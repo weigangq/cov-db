@@ -17,12 +17,14 @@ import argparse
 
 # Parameters -------------------------------------------------------------------
 parser = argparse.ArgumentParser(description='Add number of variable sites')
-parser.add_argument('-N', type=int, help='Number of variable sites')
+parser.add_argument('-N', type=int, help='Number of variable sites', required=True)
 parser.add_argument('-hap_num', type=int, help='Number of haplotypes in output')
-parser.add_argument('-model', '--model', choices = ['nk', 'rmf'], help='Fitness landscape model')
+parser.add_argument('-model', '--model', choices = ['nk', 'rmf'], help='Fitness landscape model', default='nk')
+
 args = parser.parse_args()
 N = args.N
-hap_num = args.hap_num
+hap_num = args.hap_num or 2**N
+
 
 # Landscapes --------------------------------------------------------------------
 # NK landscape
@@ -222,7 +224,7 @@ with open(outFile_land, 'w') as f:
     for n in out_land:
         f.write(f"H{h_id:03d}\t{n[0]}\t{n[1]}\t{model_name}\n")
         h_id += 1
-
+'''
 outFile_rug = model_name + "-ruggedness.tsv"
 with open(outFile_rug, 'w') as f:
     f.write(f"N_max\t{get_N_max(out_rug)}\n")
@@ -233,3 +235,4 @@ with open(outFile_rug, 'w') as f:
     for n in out_rug:
         f.write(f"{n[0:-2]}\t{n[-1]}\t{model_name}\n")
         h_id += 1
+'''
