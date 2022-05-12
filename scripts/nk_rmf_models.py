@@ -216,13 +216,15 @@ if args.model == 'rmf':
     out_land = rmf()[0]
     out_rug = rmf()[1]
 
+N_max = get_N_max(out_rug)
+r_s = cal_r_s(out_rug)
 outFile_land = model_name + "-landscape.tsv"
 with open(outFile_land, 'w') as f:
     f.write("ranked_id\thap\tfit\tmodel\tN_max\tr/s\n")
     # Rank haps
     h_id = 0
     for n in out_land:
-        f.write(f"H{h_id:03d}\t{n[0]}\t{n[1]}\t{model_name}\t{get_N_max(out_rug)}\t{cal_r_s(out_rug)}\n")
+        f.write(f"H{h_id:03d}\t{n[0]}\t{n[1]}\t{model_name}\t{N_max}\t{r_s}\n")
         h_id += 1
 
 '''
