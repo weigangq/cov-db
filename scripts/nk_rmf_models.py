@@ -17,12 +17,12 @@ import argparse
 
 # Parameters -------------------------------------------------------------------
 parser = argparse.ArgumentParser(description='Add number of variable sites')
-parser.add_argument('-N', type=int, help='Number of variable sites', required=True)
-parser.add_argument('-hap_num', type=int, help='Number of haplotypes in output')
-parser.add_argument('-model', '--model', choices = ['nk', 'rmf'], help='Fitness landscape model', default='nk')
+parser.add_argument('-N', type=int, help='Number of variable sites (i.e., SNVs, single-nucleotide variants) (Default 10)', default = 10)
+parser.add_argument('-hap_num', type=int, help='Number of haplotypes in output (defalt 100)', default = 100)
+parser.add_argument('-model', '--model', choices = ['nk', 'rmf', 'poly'], help='Fitness landscape model', default='nk')
 
 args = parser.parse_args()
-N = args.N
+N = args.N or 10
 hap_num = args.hap_num or 2**N
 
 
