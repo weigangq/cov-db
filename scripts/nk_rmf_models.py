@@ -14,12 +14,13 @@ import copy
 import pickle
 import multiprocessing
 import argparse
+from scipy import special
 
 # Parameters -------------------------------------------------------------------
 parser = argparse.ArgumentParser(description='Add number of variable sites')
 parser.add_argument('-N', type=int, help='Number of variable sites (i.e., SNVs, single-nucleotide variants) (Default 10)', default = 10)
-parser.add_argument('-hap_num', type=int, help='Number of haplotypes in output (defalt 100)', default = 100)
-parser.add_argument('-model', '--model', choices = ['nk', 'rmf', 'poly'], help='Fitness landscape model', default='nk')
+parser.add_argument('-hap_num', type=int, help='Number of haplotypes in output (default 100)', default = 100)
+parser.add_argument('-model', '--model', choices = ['nk', 'rmf', 'poly'], help='Fitness landscape model (default: nk)', default='nk')
 
 args = parser.parse_args()
 N = args.N or 10
@@ -53,8 +54,7 @@ def nk():
         '''
         Fit_vector = np.zeros(N)
         for ad1 in np.arange(N):
-            Fit_vector[ad1] = NK_land_[np.sum(Current_position * inter_m[ad1]
-                                          * Power_key_), ad1]
+            Fit_vector[ad1] = NK_land_[np.sum(Current_position * inter_m[ad1] * Power_key_), ad1]
         return (Fit_vector)
 
     def comb_and_values(NK_land_, Power_key_, inter_m):
@@ -170,6 +170,102 @@ def rmf():
         RMF_list.append(RMF_items[pos * i])
     return RMF_list, RMF_landscape_list[1][0]
 
+# Polynomial landscape
+def poly():
+
+    def get_fit(gt,b1,b2,b3):
+        '''
+        Takes a genoytpe and b1, b2, b3 parameters to calculate the fitness
+        '''
+
+        # Calculate additive fitnesse contribution
+        fit_1 = np.sum(gt*b1)
+
+        # Calculate 2-way epistatic fitness contribution
+        gt_2 = np.array([])
+        for i,row in enumerate(gt*gt.reshape(-1,1)):
+            gt_2 = np.concatenate([gt_2,row[i+1:]])
+        fit_2 = np.sum(gt_2*b2)
+
+        # Calculate 3-way epistatic fitness contribution
+        gt_3 = np.array([])
+        gt_33 = gt.reshape(-1,1,1)*gt.reshape(1,-1,1)*gt.reshape(1,1,-1)
+        for pos_1 in range(N-2):
+            for pos_2 in range(pos_1+1,N-1):
+                gt_3 = np.concatenate([gt_3,gt_33[pos_1,pos_2,pos_2+1:]])
+        fit_3 = np.sum(gt_3*b3)
+
+        # Return overall fitness
+        return fit_1+fit_2+fit_3
+
+    def get_fitness(gt_lst,b1,b2,b3):
+        '''
+        This function takes a list of genotypes and calculate their fitness
+        '''
+        # get fitness for all genotypes
+        fitness_lst = np.array([get_fit(gt,b1,b2,b3) for gt in gt_lst])
+
+        # normalize fitness
+        MIN = np.min(fitness_lst)
+        MAX = np.max(fitness_lst)
+        fitness_lst = (fitness_lst - MIN) / (MAX - MIN)
+        return fitness_lst
+
+    def normalize(array):
+        '''
+        Normalize an array of value to the scale of 0 to 1
+        '''
+        MAX = np.max(array)
+        MIN = np.min(array)
+        return (array - MIN)/(MAX - MIN)
+
+    # NK landscape parameters -----------------------------------------
+    # Change parameters to get fitness landscape of different variable site.
+
+    N = 15  # number of variable site
+
+    # Initialize genotype 0-1 space
+    gt_lst = np.array(list(map(list, itertools.product([0, 1], repeat=N))))
+
+    # Create Polynomial fitness landscape
+    POLY_landscape_list = {i:[] for i in range(1,101)}
+    v1_loop = itertools.cycle(np.linspace(0.95,0.05,20)) # v1 is evenly sampled from 0.05 to 0.95
+    for i in range(1,2):
+        for j in range(1):
+            Landscape_data = []
+            v1 = next(v1_loop)
+            v2 = np.sqrt((1-v1**2)/2); v3 = np.sqrt((1-v1**2)/2) # calculate v2 and v3
+
+            # calculate b1 and b2 and b3
+            b1 = nrand.normal(scale=v1,size=N)
+            b2 = nrand.normal(scale=v2,size=special.comb(N,2).astype(int))
+            b3 = nrand.normal(scale=v3,size=special.comb(N,3).astype(int))
+
+            # calculate fitness for all genotypes
+            fitness_lst = get_fitness(gt_lst,b1,b2,b3)
+            fitness_landscape = np.concatenate((gt_lst,fitness_lst.reshape([-1,1])),axis=1)
+            fitness_landscape = normalize(fitness_landscape)
+            POLY_landscape_list[i].append(fitness_landscape)
+
+    # Combine haplotype and its corresponding fitness
+    POLY_items = []
+    for k in range(POLY_landscape_list[1][0].shape[0]):
+        haps = [str(int(n)) for n in POLY_landscape_list[1][0][k][0:-1]]
+        haps = "".join(haps)
+        POLY_items.append((haps, POLY_landscape_list[1][0][k][-1]))
+    POLY_items.sort(key=lambda x: x[-1], reverse=True)
+
+    # Take only certain number of haplotypes with unique fitness values as output
+    pos = len(POLY_items) / hap_num
+    pos = int(pos)
+    POLY_list = []
+    for i in range(0, hap_num):
+        POLY_list.append(POLY_items[pos * i])
+    return POLY_list, POLY_landscape_list[1][0]
+
+    # with open(f'../FL_data_100X10/Polynomial_{N}_landscape_list_100X10.pkl','wb') as f:
+    #     pickle.dump(Polynomial_landscape_list,f)
+
 # Ruggedness -------------------------------------------------------
 # Number of maxima (N max)
 def get_N_max(landscape):
@@ -215,6 +311,12 @@ if args.model == 'rmf':
     model_name = 'rmf'
     out_land = rmf()[0]
     out_rug = rmf()[1]
+
+if args.model == 'poly':
+    model_name = 'poly'
+    out_land = poly()[0]
+    out_rug = poly()[1]
+
 
 N_max = get_N_max(out_rug)
 r_s = cal_r_s(out_rug)
