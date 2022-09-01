@@ -5,6 +5,7 @@ Referenced paper:
 Original file is located at
     https://github.com/song88180/fitness-landscape-error
 """
+from asyncore import ExitNow
 import numpy as np
 import numpy.random as nrand
 import matplotlib.pyplot as plt
@@ -15,12 +16,15 @@ import pickle
 import multiprocessing
 import argparse
 from scipy import special
+from sklearn.metrics import jaccard_score
 
 # Parameters -------------------------------------------------------------------
 parser = argparse.ArgumentParser(description='Add number of variable sites')
 parser.add_argument('-N', type=int, help='Number of variable sites (i.e., SNVs, single-nucleotide variants) (Default 10)', default = 10)
 parser.add_argument('-hap_num', type=int, help='Number of haplotypes in output (default 100)', default = 100)
-parser.add_argument('-model', '--model', choices = ['nk', 'rmf', 'poly'], help='Fitness landscape model (default: nk)', default='nk')
+parser.add_argument('-model', '--model', choices = ['nk', 'rmf', 'poly', 'cov'], help='Fitness landscape model (default: nk)', default='nk')
+parser.add_argument('-ref', '--ref', choices = ['beta', 'e484k', 'n501y', 'wuhan', 'delta'], help='Reference strand (default Wuhan)', default='wuhan')
+parser.add_argument('-in', '--infile')
 
 args = parser.parse_args()
 N = args.N or 10
@@ -266,26 +270,154 @@ def poly():
     # with open(f'../FL_data_100X10/Polynomial_{N}_landscape_list_100X10.pkl','wb') as f:
     #     pickle.dump(Polynomial_landscape_list,f)
 
+# COVID landscape
+def cov(infile):
+
+    # Get the reference strand
+    if args.ref == 'beta':
+        model_name = 'cov-beta'
+        ref = 'Beta'
+
+    if args.ref == 'e484k':
+        model_name = 'cov-e484k'
+        ref = 'E484K'
+
+    if args.ref == 'n501y':
+        model_name = 'cov-n501y'
+        ref = 'N501Y'
+
+    if args.ref == 'wuhan':
+        model_name = 'cov-wuhan'
+        ref = 'Wuhan-Hu-1'
+
+    if args.ref == 'delta':
+        model_name = 'cov-delta'
+        ref = 'Delta'
+
+    # Define fitness for each position as average of mutants fitness 
+    def get_fit(input_file):
+        '''
+        Produces a list of all fitness values
+        '''
+        df = pd.read_csv(input_file)
+        reference = df.groupby(['target']).get_group(ref)
+        fit_list = reference.query('delta_bind > 0 or delta_bind <0').groupby('position').mean().reset_index().delta_bind.tolist()
+        return fit_list
+        
+    def get_fitness(input_file):
+        '''
+        Converts the fitness list into an array
+        '''
+        fit_list = get_fit(input_file)
+        fit_array = np.array(fit_list)
+        return fit_array
+
+    # COV landscape parameters -----------------------------------------
+
+    N = 15  # number of variable site
+    
+    # calculate fitness for all genotypes
+    fit_list = get_fit(infile)
+
+    # Generate COV_list
+    def COV_list():
+        haps = []
+        i = 1
+        for item in fit_list:
+            pasti = i
+            j = 1
+            k = fit_list.index(item) + 1
+            a = f'{j:0{k}b}'
+            single_hap = [a]
+            norm = '0'
+            while (i < len(fit_list)):
+                single_hap.append(norm)
+                i +=1
+            single_hap = "".join(single_hap)
+            haps.append(single_hap)
+            i = pasti
+            i += 1
+
+        COV_list = []
+        for item in haps:
+            COV_item = (haps[haps.index(item)], fit_list[haps.index(item)])
+            COV_list.append(COV_item)
+        return COV_list
+
+    # Generate COV_landscape_list
+    def COV_landscape_list():
+        haps = []
+        i = 1
+        for item in fit_list:
+            pasti = i
+            a = 1
+            j = fit_list.index(item) + 1
+            norm = 0
+            one = 1
+            single_hap = []
+            while a < j:
+                single_hap.append(norm)
+                a +=1
+            single_hap.append(one)
+            while (i < len(fit_list)):
+                single_hap.append(norm)
+                i +=1
+            haps.append(single_hap)
+            i = pasti
+            i += 1
+        #print(haps)
+
+        fitness = get_fitness(infile)
+
+        COV_landscape = {i:[] for i in range(1,2)}
+        COV_item_list = []
+        #print(COV_landscape)
+        for i in range(1,2):
+            for item in haps:
+                COV_item = haps[haps.index(item)]
+                COV_item.append(fitness[haps.index(item)])
+                COV_item_list.append(COV_item)
+            COV_landscape[i].append(np.array(COV_item_list))
+        return COV_landscape[1][0]
+
+    COV_list = COV_list()
+    COV_landscape_list = COV_landscape_list()
+
+    return COV_list, COV_landscape_list, model_name
+
 # Ruggedness -------------------------------------------------------
 # Number of maxima (N max)
 def get_N_max(landscape):
     N = landscape.shape[1] - 1
     N_max = 0
-    for gt in landscape:
-        seq = gt[0:N]
-        fit = gt[N]
+    if args.model == 'cov':
+        hap = landscape[0]
+        fit = hap[-1]
         flag = True
-        for i,_ in enumerate(seq):
-            seq_ = copy.deepcopy(seq)
-            seq_[i] = 1 - seq_[i]
-            tmp = ''.join(seq_.astype(int).astype(str))
-            idx = int(tmp, 2)
-            fit_ = landscape[idx,N]
+        for item in landscape:
+            fit_ = item[-1]
             if fit < fit_:
                 flag = False
-                break
-        if flag == True:
-            N_max += 1
+            if flag == True:
+                N_max += 1
+            flag = True
+            fit = fit_
+    else:
+        for gt in landscape:
+            seq = gt[0:N]
+            fit = gt[N]
+            flag = True
+            for i,_ in enumerate(seq):
+                seq_ = copy.deepcopy(seq)
+                seq_[i] = 1 - seq_[i]
+                tmp = ''.join(seq_.astype(int).astype(str))
+                idx = int(tmp, 2)
+                fit_ = landscape[idx,N]
+                if fit < fit_:
+                    flag = False
+                    break
+            if flag == True:
+                    N_max += 1
     return N_max
 
 # Roughness to slope ratio (r/s)
@@ -317,6 +449,14 @@ if args.model == 'poly':
     out_land = poly()[0]
     out_rug = poly()[1]
 
+if args.model == 'cov':
+    if args.infile == None:
+        print("Need a COVID-binding file")
+        exit
+    infile = args.infile
+    model_name = cov(infile)[2]
+    out_land = cov(infile)[0]
+    out_rug = cov(infile)[1]
 
 N_max = get_N_max(out_rug)
 r_s = cal_r_s(out_rug)
