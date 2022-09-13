@@ -2,17 +2,17 @@ import numpy as np
 from numpy.random import default_rng
 
 
-def arr_to_str(nparray):
+def arr_to_str(nparray: np.ndarray) -> str:
     # Convert 1D numpy array to a single string.
     return ''.join(str(nparray)[1:-1].split())
 
 
-def str_to_arr(string):
+def str_to_arr(string: str) -> np.ndarray:
     # Convert a binary string into numpy array.
     return np.asarray(list(string), dtype=np.integer)
 
 
-def dist_to_closest(nparray, land_pop):
+def dist_to_closest(nparray: np.ndarray, land_pop: dict) -> dict:
     # Get the closest point in land_pop from nparray
     dist_to_land = []
     for id in land_pop:
@@ -27,7 +27,7 @@ def dist_to_closest(nparray, land_pop):
     return closest_id
 
 
-def dist_to_fittest(fittest, compare_pop, genome_size):
+def dist_to_fittest(fittest: np.ndarray, compare_pop: np.ndarray, genome_size: int) -> list:
     # Find distance between nparray and every other individual in compare_pop.
     distances = []
     for indiv in range(compare_pop.shape[0]):
@@ -40,12 +40,12 @@ def dist_to_fittest(fittest, compare_pop, genome_size):
     return distances  # List of mutated haps
 
 
-def hap_dist_to_fittest(fittest, nparray, genome_size):
+def hap_dist_to_fittest(fittest: object, nparray: np.ndarray, genome_size: int) -> int:
     return np.sum(np.absolute(fittest - nparray)) / genome_size
 
 
 # returns sorted list
-def add_fitness(haps, model):
+def add_fitness(haps: np.ndarray, model: str) -> list:
     # print(haps)
     # Search for the individual with the highest fitness
     fitness_list = []
@@ -83,7 +83,7 @@ def add_fitness(haps, model):
 
 
 class Population:
-    def __init__(self, landscape, pop_size):
+    def __init__(self, landscape: dict, pop_size: int):
         self.generation = 0  # initialize when called
         self.elite = []  # Contains each generation's 10 most fit/novel/combo individuals + their fitness value.
         # self.elite1 = []  # Top 1 individual.
@@ -125,7 +125,7 @@ class Population:
                                    (pop_size, self.genome_length)).copy()  # Population genome
         # print(self.pop.shape)
 
-    def mutate(self, mut_rate):  # mutated a pop
+    def mutate(self, mut_rate: float) -> None:  # mutated a pop
         self.generation += 1
         # print("gen:\t", self.generation)
         for num in range(self.pop_size):  # mutate each hap
@@ -143,7 +143,7 @@ class Population:
             # print("after mutation:\t", self.pop[num])
         return
 
-    def replace_pop(self):
+    def replace_pop(self) -> None:
         # Get the strings of the elite
         elite10 = [n['elite_hap'] for n in self.elite]
         # Create the new pop by broadcasting each individual to be 1/10 of the population size, then concatenate.
@@ -153,7 +153,7 @@ class Population:
             self.pop = np.append(self.pop, np.broadcast_to(indiv, (self.pop_size // 10, self.genome_length)), axis=0)
         return
 
-    def get_fitness(self, pop):
+    def get_fitness(self, pop: np.ndarray) -> list:
         # Get fitness of the all individuals in the pop based on the landscape
         close_pop = []
         id = 0
@@ -173,7 +173,7 @@ class Population:
             id += 1
         return close_pop
 
-    def objective_selection(self):
+    def objective_selection(self) -> None:
         """
         Get the 10 individuals with the highest fitness and their fitness value.
         Fitness is determined by the fitness of its closest (most similar genotype) string on the landscape.
@@ -210,7 +210,7 @@ class Population:
         self.replace_pop()
         return
 
-    def novelty_search(self, nearest_neighbors=10, method=1, prob=0.10):
+    def novelty_search(self, nearest_neighbors: int = 10, method: int = 1, prob: float = 0.10) -> list:
         novelty_list = []
 
         # Parameters for novelty search method 2
@@ -279,7 +279,7 @@ class Population:
 
         return novelty_list
 
-    def novelty_selection(self, nearest_neighbors=10, method=1, prob=0.10):
+    def novelty_selection(self, nearest_neighbors: int = 10, method: int = 1, prob: float = 0.10) -> None:
         self.elite = []  # Reset elite
 
         # Get the 10 individuals with the highest novelty
@@ -298,7 +298,7 @@ class Population:
         self.replace_pop()
         return
 
-    def combo(self, weight=0.5, nearest_neighbors=10, method=1, prob=0.10):
+    def combo(self, weight: float = 0.5, nearest_neighbors: int = 10, method: int = 1, prob: float = 0.10) -> None:
         """
         Give each individual a score based on both novelty and fitness.
         score(i) = (1 − ρ) · fit(i) + ρ · nov(i)
